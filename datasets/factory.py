@@ -4,6 +4,9 @@ from omegaconf import OmegaConf
 
 from common.data import create_base_transforms, create_base_dataloader
 
+from .video_dataset import FFPP_Dataset
+
+
 def get_dataloader(args, split):
     """Set dataloader.
 
