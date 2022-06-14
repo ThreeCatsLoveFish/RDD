@@ -25,5 +25,5 @@ def create_base_dataloader(args, dataset, split):
                                  sampler=sampler,
                                  num_workers=num_workers,
                                  pin_memory=True,
-                                 drop_last=True)
+                                 drop_last=split == 'train')
     return dataloader
