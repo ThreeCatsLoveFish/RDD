@@ -51,3 +51,21 @@ def gather_tensor(inp, world_size=None, dist_=True, to_numpy=False):
         gather_inp = gather_inp.cpu().numpy()
 
     return gather_inp
+
+
+def is_dist_avail_and_initialized():
+    if not dist.is_available():
+        return False
+    if not dist.is_initialized():
+        return False
+    return True
+
+
+def get_rank():
+    if not is_dist_avail_and_initialized():
+        return 0
+    return dist.get_rank()
+
+
+def is_main_process():
+    return get_rank() == 0
