@@ -1,21 +1,17 @@
 import torch
 import torch.nn.functional as F
+from sklearn.metrics import roc_auc_score
 
 
-def compute_metrics(model_outputs, labels):
+@torch.no_grad()
+def compute_metrics(model_outputs, labels, auc=False):
     """
     Compute the accuracy metrics.
     """
-    real_probs = F.softmax(model_outputs, dim=1)[:, 0]
-    bin_preds = (real_probs <= 0.5).int()
+    real_probs = F.softmax(model_outputs, dim=1)[:, 1]
+    bin_preds = (real_probs > 0.5).int()
     bin_labels = (labels != 0).int()
-
-    real_cnt = (bin_labels == 0).sum()
-    fake_cnt = (bin_labels == 1).sum()
-
     acc = (bin_preds == bin_labels).float().mean()
+    auc = roc_auc_score(bin_labels.cpu(), real_probs.cpu()) if auc else 0
 
-    real_acc = (bin_preds == bin_labels)[torch.where(bin_labels == 0)].sum() / (real_cnt + 1e-12)
-    fake_acc = (bin_preds == bin_labels)[torch.where(bin_labels == 1)].sum() / (fake_cnt + 1e-12)
-
-    return acc.item(), real_acc.item(), fake_acc.item(), real_cnt.item(), fake_cnt.item()
+    return acc.item(), auc

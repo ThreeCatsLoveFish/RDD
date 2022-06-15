@@ -50,10 +50,10 @@ model:
   not_resume_layer_names:
 
 optimizer:
-  name: Adam
+  name: AdamW
   params:
     lr: 0.001
-    weight_decay: 1.0e-5
+    weight_decay: 1.0e-4
 
 loss:
   name: CrossEntropyLoss
@@ -61,5 +61,5 @@ loss:
 
 scheduler:
   name: piecewise
-  decay_epochs: [5, 20]
-  decay_rates: [0.1, 0.05]
+  decay_epochs: [40]
+  decay_rates: [0.1]

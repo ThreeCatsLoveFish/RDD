@@ -251,29 +251,12 @@ class FFPP_Dataset(data.Dataset):
         frames = self.decode_selected_frames(vr, sampled_idxs, video_face_info_d)
 
         if self.transform is not None:
-
-            if random.random() < 0.5:
-                frames = frames[::-1]
-
-            # make sure the augmentation parameter is applied the same on each frame.
-            additional_targets = {}
-            tmp_imgs = {"image": frames[0]}
-            for i in range(1, len(frames)):
-                additional_targets[f"image{i}"] = "image"
-                tmp_imgs[f"image{i}"] = frames[i]
-            self.transform.add_targets(additional_targets)
-
-            frames = self.transform(**tmp_imgs)
-            frames = OrderedDict(sorted(frames.items(), key=lambda x: x[0]))
-            frames = list(frames.values())
-            frames = torch.stack(frames)  # T, C, H, W
-            process_imgs = frames.view(-1, frames.size(2), frames.size(3)).contiguous()  # TC, H, W
-        else:
-            process_imgs = frames
+            frames = self.transform(frames)
+        frames = torch.cat(frames)  # TC, H, W
         
         video_label_int = 0 if video_label == 'real' else 1
         
-        return process_imgs, video_label_int, video_path, sampled_idxs
+        return frames, video_label_int, video_path, sampled_idxs
     
     
     def __len__(self):
@@ -324,25 +307,9 @@ class FFPP_Dataset_Preprocessed(FFPP_Dataset):
         frames = self.decode_selected_frames(vr, sampled_idxs, None)
 
         if self.transform is not None:
-
-            if random.random() < 0.5:
-                frames = frames[::-1]
-
-            # make sure the augmentation parameter is applied the same on each frame.
-            additional_targets = {}
-            tmp_imgs = {"image": frames[0]}
-            for i in range(1, len(frames)):
-                additional_targets[f"image{i:04d}"] = "image"
-                tmp_imgs[f"image{i:04d}"] = frames[i]
-            self.transform.add_targets(additional_targets)
-
-            frames = self.transform(**tmp_imgs)
-            frames = OrderedDict(sorted(frames.items(), key=lambda x: x[0]))
-            frames = list(frames.values())
-            process_imgs = torch.cat(frames)  # TC, H, W
-        else:
-            process_imgs = frames
+            frames = self.transform(frames)
+        frames = torch.cat(frames)  # TC, H, W
 
         video_label_int = 0 if video_label == 'real' else 1
-        
-        return process_imgs, video_label_int, video_path, sampled_idxs
+
+        return frames, video_label_int, video_path, sampled_idxs
