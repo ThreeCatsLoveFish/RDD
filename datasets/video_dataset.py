@@ -218,8 +218,8 @@ class FFPP_Dataset(data.Dataset):
             video_face_info_d (dict): 
                 Dict containing the face bounding box information of each frame from the given video.
         """
-        img_h, img_w, _ = vr[0].shape
         frames = vr.get_batch(sampled_idxs).asnumpy()
+        img_h, img_w, _ = frames[0].shape
 
         if self.split == 'train':
             margin = random.uniform(1.0, 1.5)
@@ -251,31 +251,65 @@ class FFPP_Dataset(data.Dataset):
         frames = self.decode_selected_frames(vr, sampled_idxs, video_face_info_d)
 
         if self.transform is not None:
-
-            if random.random() < 0.5:
-                frames = frames[::-1]
-
-            # make sure the augmentation parameter is applied the same on each frame.
-            additional_targets = {}
-            tmp_imgs = {"image": frames[0]}
-            for i in range(1, len(frames)):
-                additional_targets[f"image{i}"] = "image"
-                tmp_imgs[f"image{i}"] = frames[i]
-            self.transform.add_targets(additional_targets)
-
-            frames = self.transform(**tmp_imgs)
-            frames = OrderedDict(sorted(frames.items(), key=lambda x: x[0]))
-            frames = list(frames.values())
-            frames = torch.stack(frames)  # T, C, H, W
-            process_imgs = frames.view(-1, frames.size(2), frames.size(3)).contiguous()  # TC, H, W
-        else:
-            process_imgs = frames
+            frames = self.transform(frames)
+        frames = torch.cat(frames)  # TC, H, W
         
         video_label_int = 0 if video_label == 'real' else 1
         
-        return process_imgs, video_label_int, video_path, sampled_idxs
+        return frames, video_label_int, video_path, sampled_idxs
     
     
     def __len__(self):
         return len(self.dataset_info)
-        
+
+
+class FFPP_Dataset_Preprocessed(FFPP_Dataset):
+    def parse_dataset_info(self):
+        """Parse the video dataset information
+        """
+        self.real_video_dir = os.path.join(self.root, 'original_sequences', 'youtube', self.compression, 'faces')
+        self.fake_video_dir = os.path.join(self.root, 'manipulated_sequences', self.method, self.compression, 'faces')
+        self.split_json_path = os.path.join(self.root, 'splits', f'{self.split}.json')
+
+        assert os.path.exists(self.real_video_dir)
+        assert os.path.exists(self.fake_video_dir)
+        assert os.path.exists(self.split_json_path)
+
+        with open(self.split_json_path, 'r') as f:
+            json_data = json.load(f)
+
+        self.real_names = []
+        self.fake_names = []
+        for item in json_data:
+            self.real_names.extend([item[0], item[1]])
+            self.fake_names.extend([f'{item[0]}_{item[1]}', f'{item[1]}_{item[0]}'])
+
+        print(f'{self.split} has {len(self.real_names)} real videos and {len(self.fake_names)} fake videos')
+
+        self.dataset_info = [[x, 'real'] for x in self.real_names] + [[x, 'fake'] for x in self.fake_names]
+
+    def decode_selected_frames(self, vr, sampled_idxs, _):
+        return vr.get_batch(sampled_idxs).asnumpy()
+
+
+    def __getitem__(self, index):
+        video_name, video_label = self.dataset_info[index]
+
+        video_path = os.path.join(eval(f'self.{video_label}_video_dir'), video_name + '.mp4')
+        vr = VideoReader(video_path, num_threads=1)
+        video_len = len(vr)
+
+        if self.split == 'train':
+            sampled_idxs = self.sample_indices_train(video_len)
+        else:
+            sampled_idxs = self.sample_indices_test(video_len)
+
+        frames = self.decode_selected_frames(vr, sampled_idxs, None)
+
+        if self.transform is not None:
+            frames = self.transform(frames)
+        frames = torch.cat(frames)  # TC, H, W
+
+        video_label_int = 0 if video_label == 'real' else 1
+
+        return frames, video_label_int, video_path, sampled_idxs

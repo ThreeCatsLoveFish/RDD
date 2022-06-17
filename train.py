@@ -99,22 +99,17 @@ def train(dataloader, model, criterion, optimizer, epoch, global_step, args, log
 
     # set statistical meters and progress meter
     acces = AverageMeter('Acc', ':.4f')
-    real_acces = AverageMeter('RealAcc', ':.4f')
-    fake_acces = AverageMeter('FakeACC', ':.4f')
     losses = AverageMeter('Loss', ':.4f')
-    data_time = AverageMeter('Data', ':.4f')
     batch_time = AverageMeter('Time', ':.4f')
-    progress = ProgressMeter(epoch_size, [acces, real_acces, fake_acces, losses, data_time, batch_time])
+    progress = ProgressMeter(epoch_size, [acces, losses, batch_time])
 
     model.train()
-    end = time.time()
     for idx, datas in enumerate(dataloader):
-        data_time.update(time.time() - end)
-
+        tic = time.time()
         # get input data from dataloader
         images, labels, video_paths, segment_indices = datas
-        images = images.cuda(args.local_rank)
-        labels = labels.cuda(args.local_rank)
+        images = images.cuda(non_blocking=True)
+        labels = labels.cuda(non_blocking=True)
 
         # tune learning rate
         cur_lr = lr_tuner(args.optimizer.params.lr, optimizer, epoch_size, args.scheduler, 
@@ -130,24 +125,20 @@ def train(dataloader, model, criterion, optimizer, epoch, global_step, args, log
         optimizer.step()
         
         # compute accuracy metrics
-        acc, real_acc, fake_acc, real_cnt, fake_cnt = compute_metrics(outputs, labels)
+        acc, _ = compute_metrics(outputs, labels)
 
         # update statistical meters 
         acces.update(acc, images.size(0))
-        real_acces.update(real_acc, real_cnt)
-        fake_acces.update(fake_acc, fake_cnt)
         losses.update(loss.item(), images.size(0))
 
         # log training metrics at a certain frequency
         if (idx + 1) % args.train.print_info_step_freq == 0:
-            logger.info(f'TRAIN Epoch-{epoch}, Step-{global_step}: {progress.display(idx+1)} lr: {cur_lr:.7f}')
+            logger.info(f'TRAIN Epoch-{epoch}, Step-{global_step}: {progress.display(idx+1)} lr: {cur_lr:.6f}')
         
         global_step += 1
+        batch_time.update(time.time() - tic)
 
-        batch_time.update(time.time() - end)
-        end = time.time()
-
-
+@torch.no_grad()
 def test(dataloader, model, criterion, optimizer, epoch, global_step, args, logger):
     # modify the STIL num segment (train and test may have different segments)
     model.module.set_segment(args.test.dataset.params.num_segments)
@@ -155,29 +146,25 @@ def test(dataloader, model, criterion, optimizer, epoch, global_step, args, logg
     model.eval()
     y_outputs, y_labels = [], []
     loss_t = 0.
-    with torch.no_grad():
-        for idx, datas in enumerate(tqdm(dataloader)):
-            # get input data from dataloader
-            images, labels, video_paths, segment_indices = datas
-            images = images.cuda(args.local_rank)
-            labels = labels.cuda(args.local_rank)
+    for datas in dataloader:
+        # get input data from dataloader
+        images, labels, video_paths, segment_indices = datas
+        images = images.cuda(non_blocking=True)
+        labels = labels.cuda(non_blocking=True)
 
-            # model forward
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            loss_t += loss * labels.size(0)
+        # model forward
+        outputs = model(images)
+        loss = criterion(outputs, labels)
+        loss_t += loss * labels.size(0)
 
-            y_outputs.extend(outputs)
-            y_labels.extend(labels)
+        y_outputs.extend(outputs)
+        y_labels.extend(labels)
     
     # gather outputs from all distributed nodes
     gather_y_outputs = gather_tensor(y_outputs, args.world_size, to_numpy=False)
     gather_y_labels  = gather_tensor(y_labels, args.world_size, to_numpy=False)
     # compute accuracy metrics
-    acc, real_acc, fake_acc, _, _ = compute_metrics(gather_y_outputs, gather_y_labels)
-    weight_acc = 0.
-    if real_acc and fake_acc:
-        weight_acc = 2 / (1 / real_acc + 1 / fake_acc)
+    acc, auc = compute_metrics(gather_y_outputs, gather_y_labels, True)
 
     # compute loss
     loss_t = reduce_tensor(loss_t, mean=False)
@@ -186,16 +173,14 @@ def test(dataloader, model, criterion, optimizer, epoch, global_step, args, logg
     # log test metrics and save the model into the checkpoint file
     lr = optimizer.param_groups[0]['lr']
     logger.info(
-        '[TEST] EPOCH-{} Step-{} ACC: {:.4f} RealACC: {:.4f} FakeACC: {:.4f} Loss: {:.5f} lr: {:.7f}'.format(
-            epoch, global_step, acc, real_acc, fake_acc, loss, lr
+        '[TEST] EPOCH-{} Step-{} ACC: {:.4f} AUC: {:.4f} Loss: {:.5f} lr: {:.6f}'.format(
+            epoch, global_step, acc, auc, loss, lr
         )
     )
-    if args.local_rank == 0:
+    if args.local_rank == 0 and False:
         test_metrics = {
             'test_acc': acc,
-            'test_weight_acc': weight_acc,
-            'test_real_acc': real_acc,
-            'test_fake_acc': fake_acc,
+            'test_auc': auc,
             'test_loss': loss,
             'lr': lr,
             "epoch": epoch
@@ -209,13 +194,9 @@ def test(dataloader, model, criterion, optimizer, epoch, global_step, args, logg
         checkpoint['metrics'] = test_metrics
         checkpoint['args'] = args
 
-        checkpoint_save_name = \
-            "Epoch-{}-Step-{}-ACC-{:.4f}-RealACC-{:.4f}-FakeACC-{:.4f}-Loss-{:.5f}-LR-{:.6g}.tar".format(
-                epoch, global_step, acc, real_acc, fake_acc, loss, lr
-            )
         checkpoint_save_dir = os.path.join(
             os.path.join(args.exam_dir, 'ckpt'), 
-            checkpoint_save_name
+            f"checkpoint{epoch:04d}"
         )
         torch.save(checkpoint, checkpoint_save_dir)
 

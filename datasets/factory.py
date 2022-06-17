@@ -4,7 +4,7 @@ from omegaconf import OmegaConf
 
 from common.data import create_base_transforms, create_base_dataloader
 
-from .video_dataset import FFPP_Dataset
+from .video_dataset import FFPP_Dataset, FFPP_Dataset_Preprocessed
 
 
 def get_dataloader(args, split):
