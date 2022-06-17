@@ -1,9 +1,11 @@
 """
-Create uncropped face mask.
+Create uncropped face mask videos.
+
+Prereq:
+    data/ffpp_face_landmarks81.pkl
 
 python3 tools/pre_create_masks.py --multiprocess
 """
-
 import os
 import pickle
 import numpy as np
@@ -65,7 +67,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', choices=['FaceForensics++', 'ffpp_videos'], default='ffpp_videos')
     parser.add_argument('--compression', choices=['raw','c23','c40'], default='c40')
-    parser.add_argument('--processes', type=int, default=1)
+    parser.add_argument('--processes', type=int, default=4)
     args = parser.parse_args()
 
     dataset_folder = f'data/{args.dataset}/original_sequences/youtube/{args.compression}/' 
