@@ -1,49 +1,32 @@
+"""
+Create cropped videos.
+
+Prereq:
+    data/ffpp_face_rects_yolov5_s.pkl
+
+Note:
+    run "python tools/pre_create_masks.py" first, then this script 
+    (with --mask) flag will create cropped face mask videos in ${compression}/face_masks.
+
+Usage:
+    python -m tools.pre_crop_videos --video
+
+    or
+
+    RLAUNCH_REPLICA_TOTAL=$1
+    for RLAUNCH_REPLICA in $(seq 0 $(($1 - 1))); do
+        python -m tools.pre_crop_videos --video &
+    done
+    wait
+"""
 from glob import glob
 import os
 import pickle
-import subprocess
 import cv2
+import argparse
 from tqdm import tqdm
 from decord import VideoReader
-
-
-class VideoWriter:
-    def __init__(self, filename, fps=24) -> None:
-        self.filename = filename
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
-        self.fps = fps
-        self.p = None
-        self.shape = None
-    
-    def write(self, frame):
-        if not self.filename:
-            return
-        if self.p is None:
-            h, w, _ = self.shape = frame.shape
-            self.p = subprocess.Popen([
-                "/usr/bin/ffmpeg",
-                '-y',  # overwrite output file if it exists
-                '-f', 'rawvideo',
-                '-vcodec','rawvideo',
-                '-s', f'{w}x{h}',  # size of one frame
-                '-pix_fmt', 'rgb24',
-                '-r', f'{self.fps}',  # frames per second
-                '-i', '-',  # The imput comes from a pipe
-                '-an',  # Tells FFMPEG not to expect any audio
-                '-loglevel', 'error',
-                '-pix_fmt', 'yuv420p',
-                '-crf', '18',
-                '-tune', 'fastdecode',
-                # '-x264opts', 'keyint=0:min-keyint=0:no-scenecut',
-                self.filename
-            ], stdin=subprocess.PIPE)
-        assert self.shape == frame.shape
-        self.p.stdin.write(frame.tobytes())
-
-    def close(self):
-        self.p.stdin.flush()
-        self.p.stdin.close()
-        return self.p.wait()
+from tools.utils import VideoWriter
 
 
 def get_enclosing_box(img_h, img_w, box, margin=1.3):
@@ -76,15 +59,18 @@ def get_enclosing_box(img_h, img_w, box, margin=1.3):
     return [x0, y0, x1, y1]
 
 
-def to_pngs(pathlist):
+def to_pngs(pathlist, mask=False, use_moviepy=False):
     with open("data/ffpp_face_rects_yolov5_s.pkl", "rb") as f:
         video_face_info_d = pickle.load(f)
     for src_path in tqdm(pathlist):
         vid = os.path.basename(src_path)[:-4]
         src_vid = vid.split('_')[0]
-        dst_path = src_path.replace("/videos/", f"/faces/")
+        if mask:
+            dst_path = src_path.replace("/masks/", f"/face_masks/")
+        else:
+            dst_path = src_path.replace("/videos/", f"/faces/")
+        writer = VideoWriter(dst_path, use_moviepy=use_moviepy)
         os.makedirs(os.path.dirname(dst_path), exist_ok=True)
-        writer = VideoWriter(dst_path)
         for frame_id, frame in enumerate(VideoReader(src_path)):
             frame = frame.asnumpy()
             img_h, img_w, _ = frame.shape
@@ -99,8 +85,21 @@ def to_pngs(pathlist):
 
 
 if __name__ == '__main__':
-    pathlist = sorted(glob("data/ffpp_videos/*/*/c40/videos/*.mp4"))
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--moviepy', action='store_true')
+    parser.add_argument('--video', action='store_true')
+    parser.add_argument('--mask', action='store_true')
+    args = parser.parse_args()
+
     rank = int(os.environ.get('RLAUNCH_REPLICA', '0'))
     total = int(os.environ.get('RLAUNCH_REPLICA_TOTAL', '1'))
-    pathlist = pathlist[rank::total]
-    to_pngs(pathlist)
+
+    if args.video:
+        pathlist = sorted(glob("data/ffpp_videos/*/*/c40/videos/*.mp4"))
+        pathlist = pathlist[rank::total]
+        to_pngs(pathlist, args.mask, use_moviepy=args.moviepy)
+
+    if args.mask:
+        pathlist = sorted(glob("data/ffpp_videos/original_sequences/youtube/c40/masks/*.mp4"))
+        pathlist = pathlist[rank::total]
+        to_pngs(pathlist, args.mask, use_moviepy=args.moviepy)

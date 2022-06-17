@@ -4,7 +4,7 @@ Create uncropped face mask videos.
 Prereq:
     data/ffpp_face_landmarks81.pkl
 
-python3 tools/pre_create_masks.py --multiprocess
+python3 -m tools.pre_create_masks --multiprocess
 """
 import os
 import pickle
@@ -13,14 +13,14 @@ import cv2
 import multiprocessing
 import argparse
 import tqdm
-import moviepy.video.io.ImageSequenceClip
 import glob
-import shutil
 from decord import VideoReader
 from functools import partial
 
+from tools.utils import VideoWriter
 
-def worker(i, video_paths, landmarkss):
+
+def worker(i, video_paths, landmarkss, use_moviepy=False):
 
     # c40/videos/000/000.mp4
     video_path = video_paths[i]
@@ -33,7 +33,9 @@ def worker(i, video_paths, landmarkss):
 
     frame_shape = VideoReader(video_path)[0].shape
 
-    masks = []
+    frame_writer = VideoWriter(mask_video_path, use_moviepy=use_moviepy)
+
+    # masks = []
 
     last_landmark = np.zeros((1, 81, 2))
     last_mask = np.zeros(frame_shape[:-1])
@@ -55,12 +57,14 @@ def worker(i, video_paths, landmarkss):
             # no face detected
             mask = last_mask
         # grayscale -> rgb
-        masks.append(np.tile(mask[..., None], (1,1,3)))
+        # masks.append(np.tile(mask[..., None], (1,1,3)))
+        frame_writer.write(np.tile(mask[..., None], (1,1,3)))
     
     # to video
-    clip = moviepy.video.io.ImageSequenceClip.ImageSequenceClip(masks, fps=24)
+    # clip = moviepy.video.io.ImageSequenceClip.ImageSequenceClip(masks, fps=24)
     # c40/masks/000/000.mp4
-    clip.write_videofile(mask_video_path)
+    # clip.write_videofile(mask_video_path)
+    frame_writer.close()
 
 
 if __name__ == '__main__':
@@ -68,6 +72,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', choices=['FaceForensics++', 'ffpp_videos'], default='ffpp_videos')
     parser.add_argument('--compression', choices=['raw','c23','c40'], default='c40')
     parser.add_argument('--processes', type=int, default=4)
+    parser.add_argument('--moviepy', action='store_true')
     args = parser.parse_args()
 
     dataset_folder = f'data/{args.dataset}/original_sequences/youtube/{args.compression}/' 
@@ -82,7 +87,7 @@ if __name__ == '__main__':
     if args.processes == 1:
 
         for i in tqdm.tqdm(range(len(video_paths))):
-            worker(i, video_paths, landmarkss)
+            worker(i, video_paths, landmarkss, use_moviepy=args.moviepy)
 
     else:
 
@@ -90,6 +95,7 @@ if __name__ == '__main__':
             worker, 
             video_paths=video_paths, 
             landmarkss=landmarkss,
+            use_moviepy=args.moviepy,
         )
 
         pool = multiprocessing.Pool(processes=args.processes)
