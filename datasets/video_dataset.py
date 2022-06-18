@@ -313,3 +313,66 @@ class FFPP_Dataset_Preprocessed(FFPP_Dataset):
         video_label_int = 0 if video_label == 'real' else 1
 
         return frames, video_label_int, video_path, sampled_idxs
+
+
+class DelayedSBIs_Dataset_Preprocessed(FFPP_Dataset_Preprocessed):
+    def __init__(self, *args, concat=True, **kwargs):
+        self.concat = concat
+        super().__init__(*args, **kwargs)
+
+    def parse_dataset_info(self):
+        """Parse the video dataset information
+        """
+        super().parse_dataset_info()
+        concated_dataset_info = self.dataset_info
+
+        self.sbis_video_dir = os.path.join(
+            self.root, 
+            'manipulated_sequences', 
+            'SBIs', 
+            self.compression, 
+            'faces'
+        )
+
+        assert os.path.exists(self.sbis_video_dir), 'sbis video dir does not exist'
+
+        # split: 720, 140, 140
+        if self.split == 'train':
+            data_range = range(720)
+        elif self.split == 'eval':
+            data_range = range(720, 860)
+        else:
+            data_range = range(860, 1000)
+
+        self.real_names = [str(i).zfill(3) for i in data_range]
+        self.sbis_names = [str(i).zfill(3) for i in data_range]
+
+        # if no `_` in name and is fake -> sbis fake sample
+        self.dataset_info = [[x, 'real'] for x in self.real_names] + [[x, 'sbis'] for x in self.sbis_names]
+
+        self.dataset_info.extend(concated_dataset_info if self.concat else [])
+
+        print(f'{self.split} has {len(self.real_names)} real videos and {len(self.sbis_names)} sbis videos')
+
+
+if __name__ == '__main__':
+    from common.data import create_base_transforms
+    from easydict import EasyDict
+    transform_params = EasyDict({
+        'image_size': 224,
+        'mean': [0.45, 0.45, 0.45],
+        'std': [0.225, 0.225, 0.225],
+    })
+    dataset = DelayedSBIs_Dataset_Preprocessed(
+        'data/ffpp_videos',
+        'data/ffpp_face_rects_yolov5_s.pkl',
+        concat=True,
+        method='NeuralTextures',
+        compression='c40',
+        split='train',
+        num_segments=16,
+        transform=create_base_transforms(transform_params, split='train'),
+        sparse_span=150,
+    )
+    dataset[0]
+    breakpoint()
