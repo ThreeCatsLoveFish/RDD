@@ -4,7 +4,8 @@ Create uncropped face mask videos.
 Prereq:
     data/ffpp_face_landmarks81.pkl
 
-python3 -m tools.pre_create_masks --multiprocess
+Usage:
+    python3 -m tools.pre_create_masks
 """
 import os
 import pickle
@@ -57,13 +58,9 @@ def worker(i, video_paths, landmarkss, use_moviepy=False):
             # no face detected
             mask = last_mask
         # grayscale -> rgb
-        # masks.append(np.tile(mask[..., None], (1,1,3)))
         frame_writer.write(np.tile(mask[..., None], (1,1,3)))
     
     # to video
-    # clip = moviepy.video.io.ImageSequenceClip.ImageSequenceClip(masks, fps=24)
-    # c40/masks/000/000.mp4
-    # clip.write_videofile(mask_video_path)
     frame_writer.close()
 
 
