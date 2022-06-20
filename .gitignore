@@ -161,5 +161,4 @@ cython_debug/
 
 # Data
 data/
-data_NeuralTextures_c40/
-data_NeuralTextures_c23/
+exps/

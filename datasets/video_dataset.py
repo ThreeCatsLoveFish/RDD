@@ -238,7 +238,7 @@ class FFPP_Dataset(data.Dataset):
     def __getitem__(self, index):
         video_name, video_label = self.dataset_info[index]
 
-        video_path = os.path.join(eval(f'self.{video_label}_video_dir'), video_name + '.mp4')
+        video_path = os.path.join(getattr(self, f'{video_label}_video_dir'), video_name + '.mp4')
         video_face_info_d = self.face_info[video_name.split('_')[0]]
         vr = VideoReader(video_path)
         video_len = min(len(vr), len(video_face_info_d))
@@ -295,7 +295,7 @@ class FFPP_Dataset_Preprocessed(FFPP_Dataset):
     def __getitem__(self, index):
         video_name, video_label = self.dataset_info[index]
 
-        video_path = os.path.join(eval(f'self.{video_label}_video_dir'), video_name + '.mp4')
+        video_path = os.path.join(getattr(self, f'{video_label}_video_dir'), video_name + '.mp4')
         vr = VideoReader(video_path, num_threads=1)
         video_len = len(vr)
 
