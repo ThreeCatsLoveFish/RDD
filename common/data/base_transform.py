@@ -8,7 +8,7 @@ def resize(img, height, width, interpolation=cv2.INTER_LINEAR):
     img_height, img_width = img.shape[:2]
     if height == img_height and width == img_width:
         return img
-    return cv2.resize(dsize=(width, height), interpolation=interpolation)
+    return cv2.resize(img, dsize=(width, height))
 
 
 def augment_hsv(imgs, hgain=5, sgain=30, vgain=30):

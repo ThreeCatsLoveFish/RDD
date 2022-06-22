@@ -4,7 +4,7 @@ import numpy as np
 from decord import VideoReader
 from matplotlib import pyplot as plt
 import scipy.fft
-import torch_dct as dct
+from common.utils.dct import dct_3d
 import torch
 from tqdm import tqdm
 
@@ -21,10 +21,10 @@ def get_freq_response(path, t_size=224):
     clip = np.float32(np.stack(clip))
     # clip = torch.from_numpy(clip)
     # freq_ = scipy.fft.dctn(clip, norm="forward")
-    freq = dct.dct_3d(torch.FloatTensor(clip), norm='ortho').numpy()
+    freq = dct_3d(torch.FloatTensor(clip), norm='ortho').numpy()
     # print(freq.shape, freq_.shape)
     # mi_ = scipy.fft.dctn(clip[..., 112], norm="forward")
-    mi = dct.dct_2d(torch.FloatTensor(clip[..., 112]), norm='ortho').numpy()
+    mi = dct_2d(torch.FloatTensor(clip[..., 112]), norm='ortho').numpy()
     # print(mi.shape, mi_.shape)
     # hw, tw, th, mi = map(np.log, map(np.abs, (freq[0], freq[:, 0], freq[..., 0].T, mi.T)))
     hw, tw, th, mi = map(np.abs, (freq[0], freq[:, 0], freq[..., 0].T, mi.T))
