@@ -21,7 +21,7 @@ class VideoWriter:
         if self.p is None:
             h, w, _ = self.shape = frame.shape
             self.p = subprocess.Popen([
-                "/usr/bin/ffmpeg",
+                "ffmpeg",
                 '-y',  # overwrite output file if it exists
                 '-f', 'rawvideo',
                 '-vcodec','rawvideo',
@@ -83,6 +83,7 @@ def to_pngs(pathlist):
         vid = os.path.basename(src_path)[:-4]
         src_vid = vid.split('_')[0]
         dst_path = src_path.replace("/videos/", f"/faces/")
+        dst_path = dst_path.replace("\\videos\\", f"\\faces\\")
         os.makedirs(os.path.dirname(dst_path), exist_ok=True)
         writer = VideoWriter(dst_path)
         for frame_id, frame in enumerate(VideoReader(src_path)):
