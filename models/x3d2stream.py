@@ -10,7 +10,7 @@ class X3D_2Stream(nn.Module):
             name, pretrained=is_main_process())
         self.freq_model = torch.hub.load('facebookresearch/pytorchvideo',
             name, pretrained=is_main_process())
-        fc_feature_dim = self.base_model.blocks[5].proj.in_features
+        fc_feature_dim = self.rgb_model.blocks[5].proj.in_features
 
         self.rgb_model.blocks[5].proj = nn.Identity()
         self.rgb_model.blocks[5].activation = nn.Identity()
