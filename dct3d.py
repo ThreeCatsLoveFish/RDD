@@ -4,7 +4,7 @@ import numpy as np
 from decord import VideoReader
 from matplotlib import pyplot as plt
 import scipy.fft
-from common.utils.dct import dct_3d
+from common.utils.dct import dct_3d, dct_2d
 import torch
 from tqdm import tqdm
 
