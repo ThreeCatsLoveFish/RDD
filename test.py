@@ -12,7 +12,7 @@ import torch.nn.functional as F
 from models import *
 from datasets import *
 
-from common import losses, optimizers
+from common import optimizers
 from common.utils import *
 from utils import *
 
@@ -74,9 +74,9 @@ def test(dataloader, model, args):
     
     gather_y_outputs = gather_tensor(y_outputs, args.world_size, to_numpy=False)
     gather_y_labels  = gather_tensor(y_labels, args.world_size, to_numpy=False)
-    acc, real_acc, fake_acc, _, _ = compute_metrics(gather_y_outputs, gather_y_labels)
+    acc, _ = compute_metrics(gather_y_outputs, gather_y_labels)
     
-    result = f'ACC: {acc:.4f} RealACC: {real_acc:.4f} FakeACC: {fake_acc:.4f}'
+    result = f'ACC: {acc:.4f}'
     if args.local_rank == 0:
         print(result)
 

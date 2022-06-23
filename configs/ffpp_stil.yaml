@@ -13,7 +13,7 @@ num_workers: 4
 train:
   batch_size: 8
   print_info_step_freq: 1
-  max_epoches: 40
+  max_epoches: 50
   use_warmup: True
   warmup_epochs: 1
   dataset:

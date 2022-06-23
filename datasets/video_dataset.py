@@ -10,6 +10,8 @@ from collections import OrderedDict
 
 from decord import VideoReader, cpu
 
+from PIL import Image
+
 class FFPP_Dataset(data.Dataset):
     def __init__(self,
                  root,
@@ -307,8 +309,11 @@ class FFPP_Dataset_Preprocessed(FFPP_Dataset):
         frames = self.decode_selected_frames(vr, sampled_idxs, None)
 
         if self.transform is not None:
-            frames = self.transform(frames)
-        frames = torch.cat(frames)  # TC, H, W
+            frames = [self.transform(Image.fromarray(frame)) for frame in frames]
+            frames = torch.stack(frames) # T, C, H, W
+            frames = frames.view(-1, frames.size(2), frames.size(3)).contiguous()  # TC, H, W
+        else:
+            frames = torch.cat(frames)  # TC, H, W
 
         video_label_int = 0 if video_label == 'real' else 1
 
