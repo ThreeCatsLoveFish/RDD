@@ -1,7 +1,7 @@
 set -e
 
 # Manipulation method. One of ['Deepfakes', 'Face2Face', 'FaceSwap', 'NeuralTextures'].
-METHOD=NeuralTextures
+METHOD=Deepfakes
 # video compression rate. One of ['c23', 'c40'].
 COMPRESSION=c40
 

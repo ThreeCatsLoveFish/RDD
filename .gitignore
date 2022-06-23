@@ -160,6 +160,7 @@ cython_debug/
 #.idea/
 
 # Data
+data
 data/
 data_NeuralTextures_c40/
 data_NeuralTextures_c23/
