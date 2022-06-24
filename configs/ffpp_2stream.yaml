@@ -1,9 +1,8 @@
 seed: 1234
 torch_home: 
 
-method: Deepfakes  # should be one of ['Deepfakes', 'Face2Face', 'FaceSwap', 'NeuralTextures']
+method: NeuralTextures  # should be one of ['Deepfakes', 'Face2Face', 'FaceSwap', 'NeuralTextures']
 compression: c40   # should be one of ['c23', 'c40']
-exam_dir: data_${method}_${compression}
 
 transform_params:
   image_size: 224
@@ -52,7 +51,7 @@ model:
 optimizer:
   name: AdamW
   params:
-    lr: 0.001
+    lr: 0.0005
     weight_decay: 1.0e-4
 
 loss:
