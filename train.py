@@ -1,27 +1,22 @@
 import os
-import sys
-from omegaconf import OmegaConf
 import time
-import numpy as np
-from tqdm import tqdm
 from collections import OrderedDict
 
 import torch
 import torch.nn as nn
 import torch.distributed as dist
-import torch.utils.data as data
-import torch.optim as optim
-import torch.nn.functional as F
 
-from models import *
-from datasets import *
+import models
+from datasets import get_dataloader
 
-from common import losses, optimizers
-from common.utils import *
-from utils import *
+from common import optimizers
+from common.utils import get_logger, AverageMeter, ProgressMeter, get_params, setup, init_exam_dir, gather_tensor, reduce_tensor
+from utils import lr_tuner, compute_metrics
 
 args = get_params()
 setup(args)
+cfg_name = args.config.split('/')[-1].replace('.yaml', '')
+args.exam_dir = f"exps/{cfg_name}/{args.model.name}_{args.method}_{args.compression}"
 init_exam_dir(args)
 
 
@@ -44,16 +39,16 @@ def main():
     test_dataloader = get_dataloader(args, 'test')
 
     # set model and wrap it with DistributedDataParallel
-    model = eval(args.model.name)(**args.model.params)
-    model.cuda(args.local_rank)
+    model = models.__dict__[args.model.name](**args.model.params)
+    model.cuda()
     model = nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank])
 
     # set optimizer
     optimizer = optimizers.__dict__[args.optimizer.name](model.parameters(), **args.optimizer.params)
-    criterion = losses.__dict__[args.loss.name](
+    criterion = nn.__dict__[args.loss.name](
         **(args.loss.params if getattr(args.loss, "params", None) else {})
-    ).cuda(args.local_rank)
-    
+    ).cuda()
+
     global_step = 1
     start_epoch = 1
     # resume model for a given checkpoint file
@@ -91,7 +86,7 @@ def main():
         test(test_dataloader, model, criterion, optimizer, epoch, global_step, args, logger)
 
 
-def train(dataloader, model, criterion, optimizer, epoch, global_step, args, logger):
+def train(dataloader, model, criterion, optimizer: torch.optim.Optimizer, epoch, global_step, args, logger):
     epoch_size = len(dataloader)
 
     # modify the STIL num segment (train and test may have different segments)
@@ -116,16 +111,16 @@ def train(dataloader, model, criterion, optimizer, epoch, global_step, args, log
             global_step, args.train.use_warmup, args.train.warmup_epochs)
 
         # forward
-        outputs = model(images)
-        loss = criterion(outputs, labels)
+        def closure():
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            acc, _ = compute_metrics(outputs, labels)
+            return loss, acc
 
         # backward
         optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        
-        # compute accuracy metrics
-        acc, _ = compute_metrics(outputs, labels)
+        loss, acc = optimizer.step(closure)
 
         # update statistical meters 
         acces.update(acc, images.size(0))
@@ -138,6 +133,8 @@ def train(dataloader, model, criterion, optimizer, epoch, global_step, args, log
         global_step += 1
         batch_time.update(time.time() - tic)
 
+
+best_acc = 0
 @torch.no_grad()
 def test(dataloader, model, criterion, optimizer, epoch, global_step, args, logger):
     # modify the STIL num segment (train and test may have different segments)
@@ -172,33 +169,35 @@ def test(dataloader, model, criterion, optimizer, epoch, global_step, args, logg
 
     # log test metrics and save the model into the checkpoint file
     lr = optimizer.param_groups[0]['lr']
+    global best_acc
+    if acc > best_acc:
+        best_acc = acc
+        if args.local_rank == 0:
+            test_metrics = {
+                'test_acc': acc,
+                'test_auc': auc,
+                'test_loss': loss,
+                'lr': lr,
+                "epoch": epoch
+            }
+
+            checkpoint = OrderedDict()
+            checkpoint['state_dict'] = model.state_dict()
+            # checkpoint['optimizer'] = optimizer.state_dict()
+            checkpoint['epoch'] = epoch
+            checkpoint['global_step'] = global_step
+            checkpoint['metrics'] = test_metrics
+            checkpoint['args'] = args
+
+            checkpoint_save_dir = os.path.join(
+                os.path.join(args.exam_dir, 'ckpt'), 
+                f"best.pth")
+            torch.save(checkpoint, checkpoint_save_dir)
     logger.info(
-        '[TEST] EPOCH-{} Step-{} ACC: {:.4f} AUC: {:.4f} Loss: {:.5f} lr: {:.6f}'.format(
-            epoch, global_step, acc, auc, loss, lr
+        '[TEST] EPOCH-{} Step-{} ACC: {:.4f}, best: {:.4f} AUC: {:.4f} Loss: {:.5f} lr: {:.6f}'.format(
+            epoch, global_step, acc, best_acc, auc, loss, lr
         )
     )
-    if args.local_rank == 0 and False:
-        test_metrics = {
-            'test_acc': acc,
-            'test_auc': auc,
-            'test_loss': loss,
-            'lr': lr,
-            "epoch": epoch
-        }
-
-        checkpoint = OrderedDict()
-        checkpoint['state_dict'] = model.state_dict()
-        checkpoint['optimizer'] = optimizer.state_dict()
-        checkpoint['epoch'] = epoch
-        checkpoint['global_step'] = global_step
-        checkpoint['metrics'] = test_metrics
-        checkpoint['args'] = args
-
-        checkpoint_save_dir = os.path.join(
-            os.path.join(args.exam_dir, 'ckpt'), 
-            f"checkpoint{epoch:04d}"
-        )
-        torch.save(checkpoint, checkpoint_save_dir)
 
 
 if __name__ == '__main__':

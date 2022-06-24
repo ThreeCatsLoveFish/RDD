@@ -4,7 +4,7 @@ from omegaconf import OmegaConf
 
 from common.data import create_base_transforms, create_base_dataloader
 
-from .video_dataset import FFPP_Dataset, FFPP_Dataset_Preprocessed
+from . import video_dataset
 
 
 def get_dataloader(args, split):
@@ -19,9 +19,10 @@ def get_dataloader(args, split):
     dataset_cfg = getattr(args, split).dataset
     dataset_params = OmegaConf.to_container(dataset_cfg.params, resolve=True)
     dataset_params['transform'] = transform
+    dataset_params['method'] = args['method']
+    dataset_params['compression'] = args['compression']
 
-    _dataset = eval(dataset_cfg.name)(**dataset_params)
-
+    _dataset = video_dataset.__dict__[dataset_cfg.name](**dataset_params)
     _dataloader = create_base_dataloader(args, _dataset, split=split)
 
     return _dataloader
