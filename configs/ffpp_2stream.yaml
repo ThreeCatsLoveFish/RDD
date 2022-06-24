@@ -14,11 +14,11 @@ num_workers: 4
 train:
   batch_size: 4
   print_info_step_freq: 1
-  max_epoches: 100
+  max_epoches: 40
   use_warmup: False
   warmup_epochs: 1
   dataset:
-    name: FFPP_Dataset
+    name: FFPP_Dataset_Preprocessed
     params:
       root: data/ffpp_videos
       face_info_path: data/ffpp_face_rects_yolov5_s.pkl
@@ -31,7 +31,7 @@ train:
 test:
   batch_size: 4
   dataset:
-    name: FFPP_Dataset
+    name: FFPP_Dataset_Preprocessed
     params:
       root: data/ffpp_videos
       face_info_path: data/ffpp_face_rects_yolov5_s.pkl
@@ -61,5 +61,5 @@ loss:
 
 scheduler:
   name: piecewise
-  decay_epochs: [40]
+  decay_epochs: [30]
   decay_rates: [0.1]
