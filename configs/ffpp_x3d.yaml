@@ -11,7 +11,7 @@ transform_params:
 
 num_workers: 4
 train:
-  batch_size: 4
+  batch_size: 8
   print_info_step_freq: 1
   max_epoches: 40
   use_warmup: False
