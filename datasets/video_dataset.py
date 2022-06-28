@@ -12,6 +12,10 @@ from decord import VideoReader, cpu
 
 from PIL import Image
 
+import torchvision.transforms as T
+
+import augly.image as imaugs
+
 class FFPP_Dataset(data.Dataset):
     def __init__(self,
                  root,
@@ -309,9 +313,23 @@ class FFPP_Dataset_Preprocessed(FFPP_Dataset):
         frames = self.decode_selected_frames(vr, sampled_idxs, None)
 
         if self.transform is not None:
-            frames = [self.transform(Image.fromarray(frame)) for frame in frames]
-            frames = torch.stack(frames) # T, C, H, W
+            aug_frames = []
+            transform = self.transform
+            # if self.split == 'train':
+                # rand = torch.rand(1)
+                # if rand < 0.25:
+                #     transform.insert(1,imaugs.HFlip(p=1))
+                # elif rand < 0.5:
+                #     transform.insert(1,imaugs.VFlip(p=1))
+                # elif rand < 0.75:
+                #     transform.insert(1,imaugs.VFlip(p=1))
+                #     transform.insert(2,imaugs.HFlip(p=1))   
+            for frame in frames:                
+                aug_frames.append(T.Compose(transform)(Image.fromarray(frame)))
+
+            frames = torch.stack(aug_frames) # T, C, H, W
             frames = frames.view(-1, frames.size(2), frames.size(3)).contiguous()  # TC, H, W
+            
         else:
             frames = torch.cat(frames)  # TC, H, W
 
