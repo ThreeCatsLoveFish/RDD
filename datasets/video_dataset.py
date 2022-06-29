@@ -352,7 +352,6 @@ class FFPP_Dataset_Preprocessed_Multiple(FFPP_Dataset):
             test_margin (float, optional): 
                 The margin to enlarge the face bounding box at test stage. Defaults to 1.3.
         """
-        super().__init__()
 
         self.root = root
         self.face_info_path = face_info_path

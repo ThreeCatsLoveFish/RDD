@@ -6,6 +6,7 @@ from common.data import create_base_transforms, create_base_dataloader
 
 from . import video_dataset
 
+METHODS = ['Deepfakes', 'Face2Face', 'FaceSwap', 'NeuralTextures']
 
 def get_dataloader(args, split):
     """Set dataloader.
@@ -19,7 +20,10 @@ def get_dataloader(args, split):
     dataset_cfg = getattr(args, split).dataset
     dataset_params = OmegaConf.to_container(dataset_cfg.params, resolve=True)
     dataset_params['transform'] = transform
-    dataset_params['method'] = args['method']
+    if dataset_cfg.name == 'FFPP_Dataset_Preprocessed_Multiple':
+        dataset_params['methods'] = [m for m in METHODS if m is not args['method']]
+    else:
+        dataset_params['method'] = args['method']
     dataset_params['compression'] = args['compression']
 
     _dataset = video_dataset.__dict__[dataset_cfg.name](**dataset_params)

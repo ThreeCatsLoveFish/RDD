@@ -16,7 +16,10 @@ from utils import lr_tuner, compute_metrics
 args = get_params()
 setup(args)
 cfg_name = args.config.split('/')[-1].replace('.yaml', '')
-args.exam_dir = f"exps/{cfg_name}/{args.model.name}_{args.method}_{args.compression}"
+if args.train.dataset.name == 'FFPP_Dataset_Preprocessed_Multiple':
+    args.exam_dir = f"exps/{cfg_name}/{args.model.name}_{args.method}_out_{args.compression}"
+else:
+    args.exam_dir = f"exps/{cfg_name}/{args.model.name}_{args.method}_{args.compression}"
 init_exam_dir(args)
 
 
