@@ -291,7 +291,6 @@ class FFPP_Dataset_Preprocessed(FFPP_Dataset):
     def decode_selected_frames(self, vr, sampled_idxs, _):
         return vr.get_batch(sampled_idxs).asnumpy()
 
-
     def __getitem__(self, index):
         video_name, video_label = self.dataset_info[index]
 
@@ -315,16 +314,125 @@ class FFPP_Dataset_Preprocessed(FFPP_Dataset):
         return frames, video_label_int, video_path, sampled_idxs
 
 
+class FFPP_Dataset_Preprocessed_Multiple(FFPP_Dataset):
+    def __init__(self,
+                 root,
+                 face_info_path,
+                 methods=['Deepfakes', 'Face2Face', 'FaceSwap'],
+                 compression='c23',
+                 split='train',
+                 num_segments=16,
+                 transform=None,
+                 sparse_span=150,
+                 dense_sample=0,
+                 test_margin=1.3):
+        """Dataset class for ffpp dataset.
+
+        Args:
+            root (str): 
+                The root path for ffpp data.
+            face_info_path (str): 
+                The pickle path containing ffpp face rect info.
+            methods (list of str, optional): 
+                Manipulation method. Multiple of ['Deepfakes', 'Face2Face', 'FaceSwap', 'NeuralTextures']. 
+                Defaults to 'Deepfakes'.
+            compression (str, optional): 
+                Video compression rate. One of ['c23', 'c40']. Defaults to 'c23'.
+            split (str, optional): 
+                Data split. One if ['train', 'val', 'test']. Defaults to 'train'.
+            num_segments (int, optional): 
+                How many frames to choose from each video. Defaults to 16.
+            transform (function, optional): 
+                Data augmentation. Defaults to None.
+            sparse_span (int, optional): 
+                How many frames to sparsely select from the whole video. Defaults to 150.
+            dense_sample (int, optional): 
+                How many frames to densely select. Defaults to 0.
+            test_margin (float, optional): 
+                The margin to enlarge the face bounding box at test stage. Defaults to 1.3.
+        """
+
+        self.root = root
+        self.face_info_path = face_info_path
+        self.methods = methods
+        self.compression = compression
+        self.split = split
+        self.num_segments = num_segments
+        self.transform = transform
+        self.sparse_span = sparse_span
+        self.dense_sample = dense_sample
+        self.test_margin = test_margin
+
+        assert self.compression in ['c23', 'c40']
+        for method in self.methods:
+            assert method in ['Deepfakes', 'Face2Face', 'FaceSwap', 'NeuralTextures']
+
+        self.parse_dataset_info()
+
+    def parse_dataset_info(self):
+        """Parse the video dataset information
+        """
+        self.real_video_dir = os.path.join(self.root, 'original_sequences', 'youtube', self.compression, 'faces')
+        self.fake_video_dirs = [
+            os.path.join(self.root, 'manipulated_sequences', method, self.compression, 'faces') for method in self.methods
+        ]
+        self.split_json_path = os.path.join(self.root, 'splits', f'{self.split}.json')
+
+        assert os.path.exists(self.real_video_dir)
+        for fake_video_dir in self.fake_video_dirs:
+            assert os.path.exists(fake_video_dir)
+        assert os.path.exists(self.split_json_path)
+
+        with open(self.split_json_path, 'r') as f:
+            json_data = json.load(f)
+
+        self.real_names = []
+        self.fake_names = []
+        for item in json_data:
+            self.real_names.extend([item[0], item[1]])
+            self.fake_names.extend([f'{item[0]}_{item[1]}', f'{item[1]}_{item[0]}'])
+
+        print(f'{self.split} has {len(self.real_names) * len(self.methods)} real videos and {len(self.fake_names) * len(self.methods)} fake videos')
+
+        self.dataset_info = [[x, 'real'] for x in self.real_names] + [[x, 'fake'] for x in self.fake_names]
+
+    def decode_selected_frames(self, vr, sampled_idxs, _):
+        return vr.get_batch(sampled_idxs).asnumpy()
+
+    def __getitem__(self, index):
+        video_name, video_label = self.dataset_info[index]
+
+        if video_label == 'fake':
+            method_idx = np.random.randint(len(self.methods))
+            video_path = os.path.join(getattr(self, f'{video_label}_video_dirs')[method_idx], video_name + '.mp4')
+        else:
+            video_path = os.path.join(getattr(self, f'{video_label}_video_dir'), video_name + '.mp4')
+        vr = VideoReader(video_path, num_threads=1)
+        video_len = len(vr)
+
+        if self.split == 'train':
+            sampled_idxs = self.sample_indices_train(video_len)
+        else:
+            sampled_idxs = self.sample_indices_test(video_len)
+
+        frames = self.decode_selected_frames(vr, sampled_idxs, None)
+
+        if self.transform is not None:
+            frames = self.transform(frames)
+        frames = torch.cat(frames)  # TC, H, W
+
+        video_label_int = 0 if video_label == 'real' else 1
+
+        return frames, video_label_int, video_path, sampled_idxs
+
 class DelayedSBIs_Dataset_Preprocessed(FFPP_Dataset_Preprocessed):
-    def __init__(self, *args, concat=True, **kwargs):
-        self.concat = concat
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def parse_dataset_info(self):
         """Parse the video dataset information
         """
         super().parse_dataset_info()
-        concated_dataset_info = self.dataset_info
 
         self.sbis_video_dir = os.path.join(
             self.root, 
@@ -336,23 +444,82 @@ class DelayedSBIs_Dataset_Preprocessed(FFPP_Dataset_Preprocessed):
 
         assert os.path.exists(self.sbis_video_dir), 'sbis video dir does not exist'
 
-        # split: 720, 140, 140
-        if self.split == 'train':
-            data_range = range(720)
-        elif self.split == 'eval':
-            data_range = range(720, 860)
+    def __getitem__(self, index):
+        video_name, video_label = self.dataset_info[index]
+
+        if video_label == 'fake':
+            # if fake, overwrite by the sbis
+            video_path = os.path.join(eval(f'self.sbis_video_dir'), video_name.split('_')[0] + '.mp4')
         else:
-            data_range = range(860, 1000)
+            video_path = os.path.join(eval(f'self.{video_label}_video_dir'), video_name + '.mp4')
+        vr = VideoReader(video_path, num_threads=1)
+        video_len = len(vr)
 
-        self.real_names = [str(i).zfill(3) for i in data_range]
-        self.sbis_names = [str(i).zfill(3) for i in data_range]
+        if self.split == 'train':
+            sampled_idxs = self.sample_indices_train(video_len)
+        else:
+            sampled_idxs = self.sample_indices_test(video_len)
 
-        # if no `_` in name and is fake -> sbis fake sample
-        self.dataset_info = [[x, 'real'] for x in self.real_names] + [[x, 'sbis'] for x in self.sbis_names]
+        frames = self.decode_selected_frames(vr, sampled_idxs, None)
 
-        self.dataset_info.extend(concated_dataset_info if self.concat else [])
+        if self.transform is not None:
+            frames = self.transform(frames)
+        frames = torch.cat(frames)  # TC, H, W
 
-        print(f'{self.split} has {len(self.real_names)} real videos and {len(self.sbis_names)} sbis videos')
+        video_label_int = 0 if video_label == 'real' else 1
+
+        return frames, video_label_int, video_path, sampled_idxs
+
+
+class DelayedSBIs_Dataset_Preprocessed_Multiple(FFPP_Dataset_Preprocessed_Multiple):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def parse_dataset_info(self):
+        """Parse the video dataset information
+        """
+        super().parse_dataset_info()
+
+        self.sbis_video_dir = os.path.join(
+            self.root, 
+            'manipulated_sequences', 
+            'SBIs', 
+            self.compression, 
+            'faces'
+        )
+
+        assert os.path.exists(self.sbis_video_dir), 'sbis video dir does not exist'
+
+    def __getitem__(self, index):
+        video_name, video_label = self.dataset_info[index]
+
+        if video_label == 'fake':
+            # sbis regarded as anotehr forgery method
+            method_idx = np.random.randint(len(self.methods)+1)
+            if method_idx != len(self.methods):
+                video_path = os.path.join(getattr(self, f'{video_label}_video_dirs')[method_idx], video_name + '.mp4')
+            else:
+                video_path = os.path.join(getattr(self, 'sbis_video_dir'), video_name.split('_')[0] + '.mp4')
+        else:
+            video_path = os.path.join(getattr(self, f'{video_label}_video_dir'), video_name + '.mp4')
+        vr = VideoReader(video_path, num_threads=1)
+        video_len = len(vr)
+
+        if self.split == 'train':
+            sampled_idxs = self.sample_indices_train(video_len)
+        else:
+            sampled_idxs = self.sample_indices_test(video_len)
+
+        frames = self.decode_selected_frames(vr, sampled_idxs, None)
+
+        if self.transform is not None:
+            frames = self.transform(frames)
+        frames = torch.cat(frames)  # TC, H, W
+
+        video_label_int = 0 if video_label == 'real' else 1
+
+        return frames, video_label_int, video_path, sampled_idxs
+
 
 
 if __name__ == '__main__':
@@ -363,10 +530,9 @@ if __name__ == '__main__':
         'mean': [0.45, 0.45, 0.45],
         'std': [0.225, 0.225, 0.225],
     })
-    dataset = DelayedSBIs_Dataset_Preprocessed(
+    sbis_dataset = DelayedSBIs_Dataset_Preprocessed(
         'data/ffpp_videos',
         'data/ffpp_face_rects_yolov5_s.pkl',
-        concat=True,
         method='NeuralTextures',
         compression='c40',
         split='train',
@@ -374,5 +540,30 @@ if __name__ == '__main__':
         transform=create_base_transforms(transform_params, split='train'),
         sparse_span=150,
     )
-    dataset[0]
+    sbis_dataset[0]
+    sbis_dataset[-1]
+    ffpp_dataset_multiple = FFPP_Dataset_Preprocessed_Multiple(
+        'data/ffpp_videos',
+        'data/ffpp_face_rects_yolov5_s.pkl',
+        methods=['NeuralTextures', 'Face2Face'],
+        compression='c40',
+        split='train',
+        num_segments=16,
+        transform=create_base_transforms(transform_params, split='train'),
+        sparse_span=150,
+    )
+    ffpp_dataset_multiple[0]
+    ffpp_dataset_multiple[-1]
+    sbis_dataset_multiple = DelayedSBIs_Dataset_Preprocessed_Multiple(
+        'data/ffpp_videos',
+        'data/ffpp_face_rects_yolov5_s.pkl',
+        methods=['NeuralTextures', 'Face2Face'],
+        compression='c40',
+        split='train',
+        num_segments=16,
+        transform=create_base_transforms(transform_params, split='train'),
+        sparse_span=150,
+    )
+    sbis_dataset_multiple[0]
+    sbis_dataset_multiple[-1]
     breakpoint()
