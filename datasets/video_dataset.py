@@ -11,6 +11,8 @@ from collections import OrderedDict
 from decord import VideoReader, cpu
 
 class FFPP_Dataset(data.Dataset):
+
+    methods = ['Deepfakes', 'Face2Face', 'FaceSwap', 'NeuralTextures']
     def __init__(self,
                  root,
                  face_info_path,
@@ -318,7 +320,7 @@ class FFPP_Dataset_Preprocessed_Multiple(FFPP_Dataset):
     def __init__(self,
                  root,
                  face_info_path,
-                 methods=['Deepfakes', 'Face2Face', 'FaceSwap'],
+                 method='Deepfakes',
                  compression='c23',
                  split='train',
                  num_segments=16,
@@ -354,7 +356,7 @@ class FFPP_Dataset_Preprocessed_Multiple(FFPP_Dataset):
 
         self.root = root
         self.face_info_path = face_info_path
-        self.methods = methods
+        self.methods = list(set(FFPP_Dataset.methods) - set([method]))
         self.compression = compression
         self.split = split
         self.num_segments = num_segments
@@ -545,7 +547,7 @@ if __name__ == '__main__':
     ffpp_dataset_multiple = FFPP_Dataset_Preprocessed_Multiple(
         'data/ffpp_videos',
         'data/ffpp_face_rects_yolov5_s.pkl',
-        methods=['NeuralTextures', 'Face2Face'],
+        method='Deepfakes',
         compression='c40',
         split='train',
         num_segments=16,
@@ -557,7 +559,7 @@ if __name__ == '__main__':
     sbis_dataset_multiple = DelayedSBIs_Dataset_Preprocessed_Multiple(
         'data/ffpp_videos',
         'data/ffpp_face_rects_yolov5_s.pkl',
-        methods=['NeuralTextures', 'Face2Face'],
+        method='Deepfakes',
         compression='c40',
         split='train',
         num_segments=16,

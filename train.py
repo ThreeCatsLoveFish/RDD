@@ -22,6 +22,8 @@ from utils import *
 
 args = get_params()
 setup(args)
+# cfg_name = args.config.split('/')[-1].replace('.yaml', '')
+# args.exam_dir = f"exps/{cfg_name}/{args.method}_{args.compression}"
 init_exam_dir(args)
 
 
