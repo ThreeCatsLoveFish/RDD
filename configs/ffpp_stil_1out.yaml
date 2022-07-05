@@ -48,7 +48,7 @@ model:
 optimizer:
   name: Adam
   params:
-    lr: 0.001
+    lr: 0.00025
     weight_decay: 1.0e-4
 
 loss:
