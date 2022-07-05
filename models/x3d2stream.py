@@ -32,7 +32,7 @@ class X3D_2Stream(nn.Module):
         rgb = x.view(n, -1, 3, h, w).transpose(1, 2) # (N, C, T, H, W)
         
         # calculate DCT-3D on last 3 dimensions (spatial + temporal)
-        freq = dct_3d(rgb) 
+        freq = dct_3d(rgb, norm='ortho') 
         
         rgb_embd = self.rgb_model(rgb)
         freq_embd = self.freq_model(freq)
