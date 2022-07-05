@@ -21,8 +21,10 @@ def get_dataloader(args, split):
     dataset_params = OmegaConf.to_container(dataset_cfg.params, resolve=True)
     dataset_params['transform'] = transform
     if dataset_cfg.name == 'FFPP_Dataset_Preprocessed_Multiple':
-        dataset_params['methods'] = [m for m in METHODS if m is not args['method']]
+        print(args['method'])
+        dataset_params['methods'] = [m for m in METHODS if m != args['method']]
         dataset_params.pop('method')
+        print(dataset_params)
     else:
         dataset_params['method'] = args['method']
     dataset_params['compression'] = args['compression']
