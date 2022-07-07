@@ -13,7 +13,7 @@ num_workers: 4
 train:
   batch_size: 8
   print_info_step_freq: 1
-  max_epoches: 120
+  max_epoches: 60
   use_warmup: True
   warmup_epochs: 1
   dataset:
@@ -57,5 +57,5 @@ loss:
 
 scheduler:
   name: piecewise
-  decay_epochs: [90]
+  decay_epochs: [45]
   decay_rates: [0.1]
