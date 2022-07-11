@@ -39,7 +39,8 @@ def main():
 
     # get dataloaders for train and test
     train_dataloader = get_dataloader(args, 'train')
-    test_dataloader = get_dataloader(args, 'test')
+    if 'test' in args:
+        test_dataloader = get_dataloader(args, 'test')
 
     # set model and wrap it with DistributedDataParallel
     model = models.__dict__[args.model.name](**args.model.params)
@@ -47,7 +48,8 @@ def main():
     model = nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank])
 
     # set optimizer
-    optimizer = optimizers.__dict__[args.optimizer.name](model.parameters(), **args.optimizer.params)
+    params = [p for p in model.parameters() if p.requires_grad]
+    optimizer = optimizers.__dict__[args.optimizer.name](params, **args.optimizer.params)
     criterion = nn.__dict__[args.loss.name](
         **(args.loss.params if getattr(args.loss, "params", None) else {})
     ).cuda()
@@ -86,7 +88,12 @@ def main():
         
         train(train_dataloader, model, criterion, optimizer, epoch, global_step, args, logger)
         global_step += len(train_dataloader)
-        test(test_dataloader, model, criterion, optimizer, epoch, global_step, args, logger)
+        if 'test' in args:
+            test(test_dataloader, model, criterion, optimizer, epoch, global_step, args, logger)
+
+    if args.local_rank == 0:
+        torch.save(model.module.state_dict(),
+                    os.path.join(args.exam_dir, 'ckpt/last.pth'))
 
 
 def train(dataloader, model, criterion, optimizer: torch.optim.Optimizer, epoch, global_step, args, logger):
@@ -116,7 +123,11 @@ def train(dataloader, model, criterion, optimizer: torch.optim.Optimizer, epoch,
         # forward
         def closure():
             outputs = model(images)
-            loss = criterion(outputs, labels)
+            if isinstance(outputs, tuple):
+                outputs, aux_loss = outputs
+                loss = criterion(outputs, labels) * 0.01 + aux_loss
+            else:
+                loss = criterion(outputs, labels)
             loss.backward()
             acc, _ = compute_metrics(outputs, labels)
             return loss, acc
@@ -131,7 +142,8 @@ def train(dataloader, model, criterion, optimizer: torch.optim.Optimizer, epoch,
 
         # log training metrics at a certain frequency
         if (idx + 1) % args.train.print_info_step_freq == 0:
-            logger.info(f'TRAIN Epoch-{epoch}, Step-{global_step}: {progress.display(idx+1)} lr: {cur_lr:.6f}')
+            logger.info(f'TRAIN Epoch-{epoch}, Step-{global_step}: {progress.display(idx+1)} lr: {cur_lr:.6f} '
+                        f'Mem: {torch.cuda.max_memory_allocated() // 1024**2:d}M')
         
         global_step += 1
         batch_time.update(time.time() - tic)

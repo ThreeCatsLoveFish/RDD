@@ -426,3 +426,35 @@ class FFPP_Dataset_Preprocessed_Multiple(FFPP_Dataset):
         video_label_int = 0 if video_label == 'real' else 1
 
         return frames, video_label_int, video_path, sampled_idxs
+
+
+class FFPP_Dataset_Preprocessed_Real(FFPP_Dataset_Preprocessed):
+    repeat = 10
+
+    def parse_dataset_info(self):
+        """Parse the video dataset information
+        """
+        self.real_video_dir = os.path.join(self.root, 'original_sequences', 'youtube', self.compression, 'faces')
+        self.fake_video_dir = os.path.join(self.root, 'manipulated_sequences', self.method, self.compression, 'faces')
+        self.split_json_path = os.path.join(self.root, 'splits', f'{self.split}.json')
+
+        assert os.path.exists(self.real_video_dir)
+        assert os.path.exists(self.fake_video_dir)
+        assert os.path.exists(self.split_json_path)
+
+        with open(self.split_json_path, 'r') as f:
+            json_data = json.load(f)
+
+        self.real_names = []
+        for item in json_data:
+            self.real_names.extend([item[0], item[1]])
+        self.dataset_info = [[x, 'real'] for x in self.real_names]
+    
+    def __len__(self):
+        return len(self.dataset_info) * self.repeat
+
+    def __getitem__(self, index):
+        index = index % len(self.dataset_info)
+        face_id = int(self.dataset_info[index][0])
+        frames, _, video_path, sampled_idxs = super().__getitem__(index)
+        return frames, face_id, video_path, sampled_idxs

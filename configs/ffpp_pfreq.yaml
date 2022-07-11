@@ -1,0 +1,60 @@
+seed: 1234
+torch_home: 
+
+method: NeuralTextures  # should be one of ['Deepfakes', 'Face2Face', 'FaceSwap', 'NeuralTextures']
+compression: c40   # should be one of ['c23', 'c40']
+
+transform_params:
+  image_size: 224
+  mean: [0.45, 0.45, 0.45]
+  std: [0.225, 0.225, 0.225]
+
+num_workers: 4
+train:
+  batch_size: 8
+  print_info_step_freq: 1
+  max_epoches: 40
+  use_warmup: False
+  warmup_epochs: 1
+  dataset:
+    name: FFPP_Dataset_Preprocessed
+    params:
+      root: data/ffpp_videos
+      face_info_path: data/ffpp_face_rects_yolov5_s.pkl
+      split: train
+      num_segments: 16
+      sparse_span: 150
+
+test:
+  batch_size: 8
+  dataset:
+    name: FFPP_Dataset_Preprocessed
+    params:
+      root: data/ffpp_videos
+      face_info_path: data/ffpp_face_rects_yolov5_s.pkl
+      split: val
+      num_segments: 16
+      sparse_span: 150
+
+model:
+  name: PatchFreq
+  params:
+    num_class: 2
+  resume: 
+  only_resume_model: False
+  not_resume_layer_names:
+
+optimizer:
+  name: AdamW
+  params:
+    lr: 0.001
+    weight_decay: 1.0e-4
+
+loss:
+  name: CrossEntropyLoss
+  params:
+
+scheduler:
+  name: piecewise
+  decay_epochs: [30]
+  decay_rates: [0.1]
