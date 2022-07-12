@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from common.utils.distribute_utils import is_main_process
 from common.utils.dct import dct
 
@@ -31,7 +30,7 @@ def patchfy_and_dct(x, p=8, dct=True):
 
 
 class PatchFreq(nn.Module):
-    def __init__(self, name='x3d_s', num_class=2, inj_at=3, pretrain=None):
+    def __init__(self, name='x3d_s', num_class=2, inj_at=2, pretrain=None):
         super().__init__()
         x3d = torch.hub.load('facebookresearch/pytorchvideo',
             name, pretrained=pretrain is None and is_main_process())
@@ -46,7 +45,7 @@ class PatchFreq(nn.Module):
         self.blocks[0].res_blocks = self.blocks[0].res_blocks[1:]
         if pretrain and is_main_process():
             state_dict = torch.load(pretrain, map_location='cpu')
-            state_dict = {k: v for k, v in state_dict.items() if 'proj.' not in k}
+            # state_dict = {k: v for k, v in state_dict.items() if 'proj.' not in k}
             missing_keys, unexpected_keys = self.load_state_dict(state_dict, strict=False)
             print("Missing keys:", missing_keys)
             print("Unexpected keys:", unexpected_keys)
