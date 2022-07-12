@@ -58,7 +58,7 @@ class CrossAttn(nn.Module):
 
 
 class TwoStreamPatchFreq(nn.Module):
-    def __init__(self, name='x3d_s', num_class=2, inj_at=3, r=12, pretrain=None):
+    def __init__(self, name='x3d_s', num_class=2, inj_at=3, attn_at=[3], r=12, pretrain=None):
         super().__init__()
         x3d = torch.hub.load('facebookresearch/pytorchvideo',
             name, pretrained=pretrain is None and is_main_process())
@@ -78,16 +78,17 @@ class TwoStreamPatchFreq(nn.Module):
         )
         self.output_pool = nn.AdaptiveAvgPool3d(output_size=1)
         self.inj_at = inj_at
+        self.attn_at = attn_at
         self.freq_stem = nn.Sequential(
             nn.Conv3d(12 * 4**inj_at, 12 * 2**inj_at, 1, bias=False),
-            nn.BatchNorm3d(12 * 2**inj_at), nn.ReLU(inplace=True))
+            nn.BatchNorm3d(12 * 2**inj_at))
         self.blocks = x3d.blocks[inj_at:]
         self.blocks[0].res_blocks = self.blocks[0].res_blocks[1:]
         self.rgb_blocks = rgb_x3d.blocks
-        cross_attn = []
-        for i in range(len(self.blocks) - 1):
-            cross_attn.append(CrossAttn(12 * 2**(i+inj_at), r))
-        self.cross_attn = nn.ModuleList(cross_attn)
+        cross_attn = {}
+        for i in attn_at:
+            cross_attn[str(i)] = CrossAttn(12 * 2**i, r)
+        self.cross_attn = nn.ModuleDict(cross_attn)
         if pretrain and is_main_process():
             state_dict = torch.load(pretrain, map_location='cpu')
             state_dict = {k: v for k, v in state_dict.items() if 'proj.' not in k}
@@ -104,8 +105,8 @@ class TwoStreamPatchFreq(nn.Module):
             x = self.rgb_blocks[i](x)
             if i >= self.inj_at:
                 f = self.blocks[i - self.inj_at](f)
-            if i >= self.inj_at and i < len(self.rgb_blocks)-1:
-                x, f = self.cross_attn[i - self.inj_at](x, f)
+            if i in self.attn_at:
+                x, f = self.cross_attn[str(i)](x, f)
         output = torch.cat((x, f), dim=1)
         output = output.permute((0, 2, 3, 4, 1))
         output = self.fusion(output)
