@@ -5,10 +5,13 @@ import os
 import subprocess
 
 import cv2
+from matplotlib import pyplot as plt
 import torch
 import numpy as np
 from decord import VideoReader
 from omegaconf import OmegaConf
+
+from pytorch_grad_cam import ActivationsAndGradients
 
 import models
 
@@ -143,6 +146,7 @@ class VideoWriter:
             self.p.wait()
 
 
+@torch.no_grad()
 def main():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('-i', '--input', type=str,
@@ -176,37 +180,7 @@ def main():
     model.set_segment(args.n_frames)
     model.to(device).eval()
     print("Done")
-
-    # os.makedirs('figs', exist_ok=True)
-    # for src in glob("data/ffpp_videos/*/*/c40/videos/00*.mp4"):
-    #     print("Detecting...", end=' ', flush=True)
-    #     video = FaceVideo(src, detector, n_frames=args.n_frames)
-    #     frames = video.load_cropped_frames()
-    #     frames = frames.flatten(0, 1).to(device, non_blocking=True)
-
-    #     real_prob = model(frames[None])[0].softmax(-1)[0].item()
-    #     print("Done")
-
-    #     label = 'Fake' if real_prob < 0.5 else 'Real'
-    #     confidence = 1 - real_prob if real_prob < 0.5 else real_prob
-    #     print(f'Result: {label}; Confidence: {confidence:.2f}')
-    #     _, _, _, method, _, _, name = src.split('/')
-    #     dst = os.path.join('figs', f'{method}_{name}')
-    #     print("Saving results to", dst)
-    #     h, w = video.frames[0].shape[:2]
-    #     tl = max(1, round(0.002 * (h + w)) )  # line/font thickness
-    #     video = FaceVideo(src, detector, n_frames=128)
-    #     vw = VideoWriter(dst, 16)
-    #     for i, (frame, box) in enumerate(zip(video.frames, video.boxes)):
-    #         x, y, w, h = box
-    #         x1, y1, x2, y2 = map(int, (x-w/2, y-h/2, x+w/2, y+h/2))
-    #         color = (0, 0, 255) if real_prob < 0.5 else (0, 255, 0)
-    #         img = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-    #         img = cv2.rectangle(img, (x1, y1), (x2, y2), color, tl)
-    #         img = cv2.putText(img, label, (x1, y1 - tl * 2), 0, tl, color, tl, cv2.LINE_AA)
-    #         # cv2.imwrite(f"figs/{i:03d}.png", img)
-    #         vw.write(img)
-    #     vw.close()
+    target_layers = [model.base_model.blocks[-3]]
 
     os.makedirs('figs/df_det', exist_ok=True)
     os.makedirs('figs/face_det', exist_ok=True)
@@ -218,7 +192,9 @@ def main():
         frames = video.load_cropped_frames()
         frames = frames.flatten(0, 1).to(device, non_blocking=True)
 
-        real_prob = model(frames[None])[0].softmax(-1)[0].item()
+        cam_model = ActivationsAndGradients(model, target_layers, None)
+        pred = model(frames[None])[0]
+        real_prob = pred.softmax(-1)[0].item()
         print("Done")
 
         label = 'Fake' if real_prob < 0.5 else 'Real'
@@ -226,8 +202,24 @@ def main():
         print(f'Result: {label}; Confidence: {confidence:.2f}')
         _, _, _, method, _, _, name = src.split('/')
 
-        # vw_cam = VideoWriter(os.path.join('figs/cam', f'{method}_{name}'), 16)
-        # vw_cam.close()
+        vw_cam = VideoWriter(os.path.join('figs/cam', f'{method}_{name}'), 2)
+        with torch.enable_grad():
+            cam_model(frames[None])[0, 1 if real_prob < 0.5 else 0].backward(retain_graph=True)
+
+        # pull the gradients out of the cam_model
+        gradient = cam_model.gradients[0]
+        activation = cam_model.activations[0]
+        activation *= gradient.mean((2, 3, 4), True)
+        heat_map = activation[0].mean(0).relu()
+        heat_map.div_(heat_map.max())
+        for heat_map, frame in zip(heat_map.cpu().numpy(), video.crop()):
+            img = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            heatmap1 = cv2.resize(heat_map, (frame.shape[1], frame.shape[0]))
+            heatmap1 = np.uint8(255 * (heatmap1))
+            heatmap1 = cv2.applyColorMap(heatmap1, cv2.COLORMAP_JET)
+            vw_cam.write(heatmap1 // 2 + img // 2)
+        vw_cam.close()
+        cam_model.release()
 
         h, w = video.frames[0].shape[:2]
         tl = max(1, round(0.002 * (h + w)) )  # line/font thickness
