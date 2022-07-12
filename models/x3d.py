@@ -4,7 +4,7 @@ from common.utils.distribute_utils import is_main_process
 
 
 class X3D(nn.Module):
-    def __init__(self, name='x3d_s', num_class=2):
+    def __init__(self, name='x3d_m', num_class=2):
         super().__init__()
         self.base_model = torch.hub.load('facebookresearch/pytorchvideo',
             name, pretrained=is_main_process())

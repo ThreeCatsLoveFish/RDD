@@ -17,7 +17,7 @@ train:
   use_warmup: False
   warmup_epochs: 1
   dataset:
-    name: FFPP_Dataset_Preprocessed_Multiple
+    name: FFPP_Dataset_Dense
     params:
       root: data/ffpp_videos
       face_info_path: data/ffpp_face_rects_yolov5_s.pkl
@@ -28,7 +28,7 @@ train:
 test:
   batch_size: 8
   dataset:
-    name: FFPP_Dataset_Preprocessed_Multiple
+    name: FFPP_Dataset_Dense
     params:
       root: data/ffpp_videos
       cross: false

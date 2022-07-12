@@ -359,7 +359,8 @@ class FFPP_Dataset_Preprocessed_Multiple(FFPP_Dataset):
         self.face_info_path = face_info_path
         if cross:
             self.methods = list(set(['Deepfakes', 'Face2Face', 'FaceSwap', 'NeuralTextures']) - set([method]))
-            assert len(self.methods) == 3
+            if len(self.methods) != 3:
+                print(f"[Warrning] {split} methods:", self.methods)
         else:
             self.methods = [method]
         self.compression = compression

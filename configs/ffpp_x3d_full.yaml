@@ -1,7 +1,7 @@
 seed: 1234
 torch_home: 
 
-method: NeuralTextures  # should be one of ['Deepfakes', 'Face2Face', 'FaceSwap', 'NeuralTextures']
+method: Full  # should be one of ['Deepfakes', 'Face2Face', 'FaceSwap', 'NeuralTextures']
 compression: c40   # should be one of ['c23', 'c40']
 
 transform_params:
@@ -31,7 +31,6 @@ test:
     name: FFPP_Dataset_Preprocessed_Multiple
     params:
       root: data/ffpp_videos
-      cross: false
       face_info_path: data/ffpp_face_rects_yolov5_s.pkl
       split: val
       num_segments: 16
