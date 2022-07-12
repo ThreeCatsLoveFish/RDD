@@ -20,13 +20,7 @@ def get_dataloader(args, split):
     dataset_cfg = getattr(args, split).dataset
     dataset_params = OmegaConf.to_container(dataset_cfg.params, resolve=True)
     dataset_params['transform'] = transform
-    if dataset_cfg.name == 'FFPP_Dataset_Preprocessed_Multiple':
-        dataset_params['methods'] = [m for m in METHODS if m != args['method']]
-        if 'method' in dataset_params.keys():
-            dataset_params.pop('method')
-        assert len(dataset_params['methods']) == 3
-    else:
-        dataset_params['method'] = args['method']
+    dataset_params['method'] = args['method']
     dataset_params['compression'] = args['compression']
 
     _dataset = video_dataset.__dict__[dataset_cfg.name](**dataset_params)

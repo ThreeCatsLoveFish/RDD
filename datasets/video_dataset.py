@@ -1,4 +1,5 @@
 import os
+from secrets import choice
 import numpy as np
 import cv2
 import json
@@ -319,14 +320,15 @@ class FFPP_Dataset_Preprocessed_Multiple(FFPP_Dataset):
     def __init__(self,
                  root,
                  face_info_path,
-                 methods=['Deepfakes', 'Face2Face', 'FaceSwap'],
+                 method='Deepfakes',
                  compression='c23',
                  split='train',
                  num_segments=16,
                  transform=None,
                  sparse_span=150,
                  dense_sample=0,
-                 test_margin=1.3):
+                 test_margin=1.3,
+                 cross=True):
         """Dataset class for ffpp dataset.
 
         Args:
@@ -355,7 +357,11 @@ class FFPP_Dataset_Preprocessed_Multiple(FFPP_Dataset):
 
         self.root = root
         self.face_info_path = face_info_path
-        self.methods = methods
+        if cross:
+            self.methods = list(set(['Deepfakes', 'Face2Face', 'FaceSwap', 'NeuralTextures']) - set([method]))
+            assert len(self.methods) == 3
+        else:
+            self.methods = [method]
         self.compression = compression
         self.split = split
         self.num_segments = num_segments
@@ -428,8 +434,40 @@ class FFPP_Dataset_Preprocessed_Multiple(FFPP_Dataset):
         return frames, video_label_int, video_path, sampled_idxs
 
 
+class FFPP_Dataset_Dense(FFPP_Dataset_Preprocessed_Multiple):
+
+    def __getitem__(self, index):
+        video_name, video_label = self.dataset_info[index]
+
+        if video_label == 'fake':
+            method_idx = np.random.randint(len(self.methods))
+            video_path = os.path.join(getattr(self, f'{video_label}_video_dirs')[method_idx], video_name + '.mp4')
+        else:
+            video_path = os.path.join(getattr(self, f'{video_label}_video_dir'), video_name + '.mp4')
+        vr = VideoReader(video_path, num_threads=1)
+        video_len = len(vr)
+
+        start_id_max = video_len - self.num_segments - 1
+        if self.split == 'train':
+            start_id = random.randint(0, start_id_max)
+        else:
+            start_id = start_id_max // 2
+        sampled_idxs = [start_id + i for i in range(self.num_segments)]
+
+        vr.seek_accurate(start_id)
+        frames = [vr.next().asnumpy() for _ in range(self.num_segments)]
+
+        if self.transform is not None:
+            frames = self.transform(frames)
+        frames = torch.cat(frames)  # TC, H, W
+
+        video_label_int = 0 if video_label == 'real' else 1
+
+        return frames, video_label_int, video_path, sampled_idxs
+
+
 class FFPP_Dataset_Preprocessed_Real(FFPP_Dataset_Preprocessed):
-    repeat = 10
+    repeat = 100
 
     def parse_dataset_info(self):
         """Parse the video dataset information
@@ -458,3 +496,17 @@ class FFPP_Dataset_Preprocessed_Real(FFPP_Dataset_Preprocessed):
         face_id = int(self.dataset_info[index][0])
         frames, _, video_path, sampled_idxs = super().__getitem__(index)
         return frames, face_id, video_path, sampled_idxs
+
+
+class RepeatDataset(data.Dataset):
+    repeat = 10
+
+    def __init__(self, base, *args, **kwargs) -> None:
+        super().__init__()
+        self.ds = globals()[base](*args, **kwargs)
+
+    def __len__(self):
+        return len(self.ds) * self.repeat
+
+    def __getitem__(self, index):
+        return self.ds[index % len(self.ds)]

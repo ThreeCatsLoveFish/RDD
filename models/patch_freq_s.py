@@ -38,8 +38,8 @@ def to_ftcn(m: nn.Module):
             to_ftcn(c)
 
 
-class PatchFreq(nn.Module):
-    def __init__(self, name='x3d_m', num_class=2, inj_at=2, pretrain=None):
+class PatchFreqS(nn.Module):
+    def __init__(self, name='x3d_m', num_class=2, inj_at=3, pretrain=None):
         super().__init__()
         x3d = torch.hub.load('facebookresearch/pytorchvideo',
             name, pretrained=pretrain is None and is_main_process())
@@ -48,10 +48,9 @@ class PatchFreq(nn.Module):
         x3d.blocks[5].activation = nn.Identity()
         self.inj_at = inj_at
         self.freq_stem = nn.Sequential(
-            nn.Conv3d(12 * 4**inj_at, 12 * 2**inj_at, 1, bias=False),
-            nn.BatchNorm3d(12 * 2**inj_at))
+            nn.Conv3d(3 * 4**inj_at, 6 * 2**inj_at, 1, bias=False),
+            nn.BatchNorm3d(6 * 2**inj_at))
         self.blocks = x3d.blocks[inj_at:]
-        self.blocks[0].res_blocks = self.blocks[0].res_blocks[1:]
         if pretrain and is_main_process():
             state_dict = torch.load(pretrain, map_location='cpu')
             # state_dict = {k: v for k, v in state_dict.items() if 'proj.' not in k}
@@ -62,7 +61,7 @@ class PatchFreq(nn.Module):
     def forward(self, x: torch.Tensor):
         n, _, h, w = x.shape
         x = x.view(n, -1, 3, h, w).transpose(1, 2)  # n 3 t h w
-        f = patchfy_and_dct(x, 2 * 2**self.inj_at)
+        f = patchfy_and_dct(x, 2**self.inj_at)
         f = self.freq_stem(f)
         for blk in self.blocks:
             f = blk(f)
