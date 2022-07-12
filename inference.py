@@ -112,12 +112,14 @@ def main():
     oc_cfg.merge_with(vars(args))
     args = oc_cfg
 
+    # load face detection model
     device = torch.device(args.device)
     print("Loading face detection model...", end=' ', flush=True)
     detector = Detector(args.detector, device)
     print("Done")
 
-    print("Loading fogery detection model...", end=' ', flush=True)
+    # load forgery detection model
+    print("Loading forgery detection model...", end=' ', flush=True)
     model = models.__dict__[args.model.name](**args.model.params)
     state_dict = load_model(args.resume, map_location='cpu')
     if isinstance(state_dict, dict) and 'state_dict' in state_dict:
@@ -128,6 +130,7 @@ def main():
     model.to(device).eval()
     print("Done")
 
+    # load video
     print("Detecting...", end=' ', flush=True)
     video = FaceVideo(args.input, detector, n_frames=args.n_frames)
     frames = video.load_cropped_frames()
@@ -141,7 +144,7 @@ def main():
     print(f'Result: {label}; Confidence: {confidence:.2f}')
 
     if args.demo:
-        print("Saving results to figs/%03d.png")
+        print("Saving results to figs/")
         os.makedirs('figs', exist_ok=True)
         h, w = video.frames[0].shape[:2]
         tl = max(1, round(0.002 * (h + w)) )  # line/font thickness
