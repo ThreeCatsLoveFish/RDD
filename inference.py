@@ -1,6 +1,7 @@
 import argparse
 import math
 import os
+
 import cv2
 import torch
 import numpy as np
@@ -8,7 +9,14 @@ from decord import VideoReader
 from omegaconf import OmegaConf
 
 import models
-from models.experimental import attempt_load
+
+def load_model(url, map_location='cpu'):
+    if url.startswith('https'):
+        checkpoint = torch.hub.load_state_dict_from_url(
+            url, map_location=map_location)
+    else:
+        checkpoint = torch.load(url, map_location=map_location)
+    return checkpoint
 
 
 def make_divisible(x, divisor=32):
@@ -19,15 +27,9 @@ def make_divisible(x, divisor=32):
 class Detector:
 
     def __init__(self, weights, device='cpu', img_size=640) -> None:
-        if not os.path.exists(weights):
-            print(f"Face detector weights not found. ({weights})\n"
-                "You may need to download from "
-                "https://drive.google.com/file/d/1zxaHeLDyID9YU4-hqK7KNepXIwbTkRIO/view?usp=sharing.\n"
-                "Face detector repo: https://github.com/deepcam-cn/yolov5-face.")
-            exit(1)
         self.device = device
         self.img_size = img_size
-        self.model = attempt_load(weights, map_location=device)
+        self.model = load_model(weights, device)['model'].float().fuse().eval()
 
     def __call__(self, imgs):
         h0, w0 = imgs[0].shape[:2]
@@ -95,55 +97,62 @@ def main():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('-i', '--input', type=str,
                         default='data/ffpp_videos/manipulated_sequences/Deepfakes/c40/videos/000_003.mp4')
-    parser.add_argument('-c', '--config', type=str, default='configs/ffpp_stil.yaml')
+    parser.add_argument('-c', '--config', type=str, default='configs/ffpp_x3d_inference.yaml')
     parser.add_argument('-d', '--device', type=str,
                         default='cuda' if torch.cuda.is_available() else 'cpu')
     parser.add_argument('--n_frames', type=int, default=16)
-    parser.add_argument('--detector', type=str, default='data/yolov5s-face.pt')
+    parser.add_argument('--detector', type=str,
+                        default='https://github.com/zyayoung/oss/releases/download/rdd/yolov5n-0.5.pt')
     parser.add_argument('--resume', type=str,
-                        default='exps/ffpp_stil/STIL_Model_Deepfakes_c40/ckpt/best.pth')
+                        default='https://github.com/zyayoung/oss/releases/download/rdd/ffpp_x3d.pth')
     parser.add_argument('--demo', default=False, action='store_true')
     args = parser.parse_args()
-
-    device = torch.device(args.device)
-    detector = Detector(args.detector, device)
 
     oc_cfg = OmegaConf.load(args.config)
     oc_cfg.merge_with(vars(args))
     args = oc_cfg
 
-    # set model and wrap it with DistributedDataParallel
+    device = torch.device(args.device)
+    print("Loading face detection model...", end=' ', flush=True)
+    detector = Detector(args.detector, device)
+    print("Done")
+
+    print("Loading fogery detection model...", end=' ', flush=True)
     model = models.__dict__[args.model.name](**args.model.params)
-    state_dict = torch.load(args.resume, map_location='cpu')['state_dict']
+    state_dict = load_model(args.resume, map_location='cpu')
+    if isinstance(state_dict, dict) and 'state_dict' in state_dict:
+        state_dict = state_dict['state_dict']
     model.load_state_dict({
         k.replace('module.', ''): v for k, v in state_dict.items()})
     model.set_segment(args.n_frames)
-    model.to(device)
+    model.to(device).eval()
+    print("Done")
 
+    print("Detecting...", end=' ', flush=True)
     video = FaceVideo(args.input, detector, n_frames=args.n_frames)
     frames = video.load_cropped_frames()
     frames = frames.flatten(0, 1).to(device, non_blocking=True)
 
     real_prob = model(frames[None])[0].softmax(-1)[0].item()
-    print('real prob:', real_prob)
+    print("Done")
+
+    label = 'Fake' if real_prob < 0.5 else 'Real'
+    confidence = 1 - real_prob if real_prob < 0.5 else real_prob
+    print(f'Result: {label}; Confidence: {confidence:.2f}')
 
     if args.demo:
+        print("Saving results to figs/%03d.png")
         os.makedirs('figs', exist_ok=True)
         h, w = video.frames[0].shape[:2]
-        tl = max(1, round(0.002 * (h + w) / 2) )  # line/font thickness
+        tl = max(1, round(0.002 * (h + w)) )  # line/font thickness
         for i, (frame, box) in enumerate(zip(video.frames, video.boxes)):
             x, y, w, h = box
             x1, y1, x2, y2 = map(int, (x-w/2, y-h/2, x+w/2, y+h/2))
-            label = 'Fake' if real_prob < 0.5 else 'Real'
-            color = (0, 255, 0) if real_prob < 0.5 else (255, 0, 0)
+            color = (0, 0, 255) if real_prob < 0.5 else (0, 255, 0)
             img = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             img = cv2.rectangle(img, (x1, y1), (x2, y2), color, tl)
             img = cv2.putText(img, label, (x1, y1 - tl * 2), 0, tl, color, tl, cv2.LINE_AA)
             cv2.imwrite(f"figs/{i:03d}.png", img)
-        print("Demo images are saved to ./figs.\n"
-            "You may use the following command to greate a GIF:\n"
-            "ffmpeg -r 2 -i figs/%03d.png figs/demo.gif")
-
 
 if __name__ == "__main__":
     main()

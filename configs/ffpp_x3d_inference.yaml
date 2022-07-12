@@ -1,0 +1,6 @@
+model:
+  name: X3D
+  params:
+    name: x3d_m
+    num_class: 2
+    pretrained: False
