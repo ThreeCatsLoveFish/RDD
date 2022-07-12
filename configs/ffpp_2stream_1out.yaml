@@ -11,9 +11,9 @@ transform_params:
 
 num_workers: 4
 train:
-  batch_size: 4
+  batch_size: 8
   print_info_step_freq: 1
-  max_epoches: 60
+  max_epoches: 40
   use_warmup: False
   warmup_epochs: 1
   dataset:
@@ -21,27 +21,24 @@ train:
     params:
       root: data/ffpp_videos
       face_info_path: data/ffpp_face_rects_yolov5_s.pkl
-      method: ${method}
-      compression: ${compression}
       split: train
       num_segments: 16
       sparse_span: 150
 
 test:
-  batch_size: 4
+  batch_size: 8
   dataset:
     name: FFPP_Dataset_Preprocessed_Multiple
     params:
       root: data/ffpp_videos
+      cross: false
       face_info_path: data/ffpp_face_rects_yolov5_s.pkl
-      method: ${method}
-      compression: ${compression}
       split: val
       num_segments: 16
       sparse_span: 150
 
 model:
-  name: X3D_2Stream
+  name: TwoStreamPatchFreq
   params:
     num_class: 2
   resume: 
@@ -51,7 +48,7 @@ model:
 optimizer:
   name: AdamW
   params:
-    lr: 0.000125
+    lr: 0.001
     weight_decay: 1.0e-4
 
 loss:
@@ -60,5 +57,5 @@ loss:
 
 scheduler:
   name: piecewise
-  decay_epochs: [45]
+  decay_epochs: [30]
   decay_rates: [0.1]
