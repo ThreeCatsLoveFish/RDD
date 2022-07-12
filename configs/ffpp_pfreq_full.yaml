@@ -37,7 +37,7 @@ test:
       sparse_span: 150
 
 model:
-  name: X3D
+  name: PatchFreq
   params:
     num_class: 2
   resume: 
