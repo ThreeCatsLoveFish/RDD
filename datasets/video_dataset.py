@@ -1,12 +1,10 @@
 import os
 import numpy as np
-import cv2
 import json
 import torch
 import torch.utils.data as data
 import pickle
 import random
-from collections import OrderedDict
 
 from decord import VideoReader, cpu
 
