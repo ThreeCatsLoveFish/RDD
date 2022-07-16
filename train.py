@@ -108,6 +108,9 @@ def train(dataloader, model, criterion, optimizer: torch.optim.Optimizer, epoch,
     batch_time = AverageMeter('Time', ':.4f')
     progress = ProgressMeter(epoch_size, [acces, losses, batch_time])
 
+    world_size = dist.get_world_size()
+    accumulate = 8 // world_size
+
     model.train()
     for idx, datas in enumerate(dataloader):
         tic = time.time()
@@ -133,8 +136,16 @@ def train(dataloader, model, criterion, optimizer: torch.optim.Optimizer, epoch,
             return loss, acc
 
         # backward
-        optimizer.zero_grad()
-        loss, acc = optimizer.step(closure)
+        if idx % accumulate == 0:
+            optimizer.zero_grad()
+        if idx % accumulate < accumulate - 1:
+            with model.no_sync():
+                loss, acc = closure()
+        else:
+            loss, acc = closure()
+            for p in model.parameters():
+                p.grad.div_(accumulate)
+            optimizer.step()
 
         # update statistical meters 
         acces.update(acc, images.size(0))

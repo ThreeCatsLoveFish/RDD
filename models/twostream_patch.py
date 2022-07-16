@@ -3,7 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from common.utils.distribute_utils import is_main_process
 from common.utils.dct import dct
-import copy
+import torch.utils.checkpoint as cp
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def dct_patch(x, norm='ortho'):
@@ -101,8 +103,9 @@ class TwoStreamPatchFreq(nn.Module):
         x = x.view(n, -1, 3, h, w).transpose(1, 2)  # n 3 t h w
         f = patchfy_and_dct(x, 2 * 2**self.inj_at)
         f = self.freq_stem(f)
-        for i in range(len(self.rgb_blocks)):
-            x = self.rgb_blocks[i](x)
+        x.requires_grad_(True)
+        for i , blk in enumerate(self.rgb_blocks):
+            x = cp.checkpoint(blk, x)
             if i >= self.inj_at:
                 f = self.blocks[i - self.inj_at](f)
             if i in self.attn_at:
