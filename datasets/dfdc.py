@@ -1,3 +1,5 @@
+from glob import glob
+import json
 import os
 import numpy as np
 import torch
@@ -7,10 +9,9 @@ import random
 from decord import VideoReader
 
 
-class CelebDF_Dataset(data.Dataset):
+class DFDC_Dataset(data.Dataset):
     def __init__(self,
                  root,
-                 balance=True,
                  split='train',
                  num_segments=16,
                  transform=None,
@@ -22,10 +23,8 @@ class CelebDF_Dataset(data.Dataset):
         Args:
             root (str): 
                 The root path for ffpp data.
-            balance (bool, optional):
-                Whether to balance the number of real and fake videos. Defaults to True.
             split (str, optional): 
-                Data split. One if ['train', 'test']. Defaults to 'train'.
+                Data split. One if ['train', 'val', 'test']. Defaults to 'train'.
             num_segments (int, optional): 
                 How many frames to choose from each video. Defaults to 16.
             transform (function, optional): 
@@ -40,7 +39,6 @@ class CelebDF_Dataset(data.Dataset):
         super().__init__()
 
         self.root = root
-        self.balance = balance
         self.split = split
         self.num_segments = num_segments
         self.transform = transform
@@ -64,52 +62,51 @@ class CelebDF_Dataset(data.Dataset):
         assert os.path.exists(self.celeb_fake)
         assert os.path.exists(self.split_txt_path)
 
-        test_ids = self.get_test_ids()
-
-        assert self.split in ['test']
         self.real = []
         self.fake = []
-        # YouTube-real
-        for basename in test_ids[0]:
-            self.real.extend(os.path.join(self.youtube_real, basename))
-        # Celeb-real
-        for basename in test_ids[1]:
-            self.real.extend(os.path.join(self.celeb_real, basename))
-        # Celeb-synthesis
-        for basename in test_ids[2]:
-            self.fake.extend(os.path.join(self.celeb_fake, basename))
+        assert self.split in ['train', 'val', 'test']
+        if self.split == "test":
+            self.load_test_data()
+        elif self.split == "train":
+            self.load_train_data()
 
         print(f"Real: {len(self.real)}, Fake: {len(self.fake)}")
-
-        # Balance the number of real and fake videos
-        if self.balance:
-            self.fake = np.random.choice(
-                self.fake, size=len(self.real), replace=False)
-            print(
-                f"After Balance | Real: {len(self.real)}, Fake: {len(self.fake)}")
 
         self.dataset_info = [
             [x, 'real'] for x in self.real] + [[x, 'fake'] for x in self.fake]
 
-    def get_test_ids(self):
-        youtube_real = set()
-        celeb_real = set()
-        celeb_fake = set()
-        with open(self.split_txt_path, "r", encoding="utf-8") as f:
-            contents = f.readlines()
-            for line in contents:
-                name = line.split(" ")[-1]
-                basename = name.split("/")[-1]
-                if "YouTube-real" in name:
-                    youtube_real.add(basename)
-                elif "Celeb-real" in name:
-                    celeb_real.add(basename)
-                elif "Celeb-synthesis" in name:
-                    celeb_fake.add(basename)
-                else:
-                    raise ValueError(
-                        "'List_of_testing_videos.txt' file corrupted.")
-        return youtube_real, celeb_real, celeb_fake
+    def load_train_data(self):
+        train_folds = glob(os.path.join(self.root, "dfdc_train_part_*"))
+        for fold in train_folds:
+            metadata_path = os.path.join(fold, "metadata.json")
+            try:
+                with open(metadata_path, "r", encoding="utf-8") as file:
+                    metadata = json.loads(file.readline())
+                for k, v in metadata.items():
+                    index = k.split(".")[0]
+                    video = os.path.join(fold, index + ".mp4")
+                    label = v["label"]
+                    if label == 'REAL':
+                        self.real.append(video)
+                    elif label == 'FAKE':
+                        self.fake.append(video)
+            except FileNotFoundError:
+                continue
+
+    def load_test_data(self):
+        label_path = os.path.join(self.root, "test", "labels.csv")
+        with open(label_path, encoding="utf-8") as file:
+            content = file.readlines()
+        for _ in content:
+            if ".mp4" in _:
+                key = _.split(".")[0]
+                video = os.path.join(self.root, "test", key + ".mp4")
+                label = _.split(",")[1].strip()
+                label = int(label)
+                if label == 0:
+                    self.real.append(video)
+                elif label == 1:
+                    self.fake.append(video)
 
     def sample_indices_train(self, video_len):
         """Frame sampling strategy in training stage.
