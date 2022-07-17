@@ -1,10 +1,16 @@
-import sys
-import os
 from omegaconf import OmegaConf
 
 from common.data import create_base_transforms, create_base_dataloader
 
-from . import video_dataset
+from .ffpp import *
+from .celeb_df import *
+
+LOADER = {
+    'FFPP_Dataset': FFPP_Dataset,
+    'FFPP_Dataset_Preprocessed': FFPP_Dataset_Preprocessed,
+    'FFPP_Dataset_Preprocessed_Multiple': FFPP_Dataset_Preprocessed_Multiple,
+    'CelebDF_Dataset': CelebDF_Dataset,
+}
 
 METHODS = ['Deepfakes', 'Face2Face', 'FaceSwap', 'NeuralTextures']
 
@@ -29,7 +35,7 @@ def get_dataloader(args, split):
         dataset_params['method'] = args['method']
     dataset_params['compression'] = args['compression']
 
-    _dataset = video_dataset.__dict__[dataset_cfg.name](**dataset_params)
+    _dataset = LOADER[dataset_cfg.name](**dataset_params)
     _dataloader = create_base_dataloader(args, _dataset, split=split)
 
     return _dataloader
