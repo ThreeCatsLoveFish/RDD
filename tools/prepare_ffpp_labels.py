@@ -3,7 +3,7 @@ from glob import glob
 import json
 
 
-with open("data/ffpp_videos/splits/val.json", 'r') as f:
+with open("data/ffpp_videos/splits/test.json", 'r') as f:
     json_data = json.load(f)
 
 with open("data/ffpp_nt_test.txt", "w") as f:

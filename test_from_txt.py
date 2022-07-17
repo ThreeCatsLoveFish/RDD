@@ -1,7 +1,9 @@
 import argparse
+import copy
 import math
 import os
 from pathlib import Path
+import pickle
 
 import cv2
 import torch
@@ -10,49 +12,8 @@ from decord import VideoReader
 from omegaconf import OmegaConf
 from tqdm import tqdm
 from sklearn.metrics import roc_auc_score, accuracy_score
-
+from face_recog import Detector, load_model
 import models
-
-def load_model(url, map_location='cpu'):
-    if url.startswith('https'):
-        checkpoint = torch.hub.load_state_dict_from_url(
-            url, map_location=map_location)
-    else:
-        checkpoint = torch.load(url, map_location=map_location)
-    return checkpoint
-
-
-def make_divisible(x, divisor=32):
-    # Returns x evenly divisible by divisor
-    return math.ceil(x / divisor) * divisor
-
-
-class Detector:
-
-    def __init__(self, weights, device='cpu', img_size=640) -> None:
-        self.device = device
-        self.img_size = img_size
-        self.model = load_model(weights, device)['model'].float().fuse().eval()
-
-    def __call__(self, imgs):
-        h0, w0 = imgs[0].shape[:2]
-        r = self.img_size / max(h0, w0)  # resize image to img_size
-        w, h = make_divisible(w0 * r), make_divisible(h0 * r)
-        if r != 1:
-            interp = cv2.INTER_AREA if r < 1 else cv2.INTER_LINEAR
-            imgs = [cv2.resize(img, (w, h), interpolation=interp) for img in imgs]
-        scale = torch.tensor([w0 / w, h0 / h] * 2)
-        img = np.stack(imgs).transpose(0, 3, 1, 2)
-        img = np.ascontiguousarray(img)
-        img = torch.from_numpy(img).to(self.device, non_blocking=True)
-        img = img.float() / 255.
-
-        # Inference
-        pred = self.model(img)[0]
-
-        # Process detections
-        index = pred[..., 4].max(1).indices
-        return pred[range(index.size(0)), index, :4].cpu().mul(scale).numpy()
 
 
 class FaceVideo:
@@ -64,8 +25,9 @@ class FaceVideo:
             img_size = (img_size, img_size)
         self.img_size = img_size
         self.detector = detector
-        self.mean = np.float32([0.485, 0.456, 0.406]) * 255
-        self.std = np.float32([0.229, 0.224, 0.225]) * 255
+        self.face_info = pickle.load(open('data/ffpp_face_rects_yolov5_s.pkl', 'rb'))
+        self.mean = np.float32([0.45, 0.45, 0.45]) * 255
+        self.std = np.float32([0.225, 0.225, 0.225]) * 255
         self._frames = None
         self._boxes = None
 
@@ -73,14 +35,21 @@ class FaceVideo:
     def frames(self):
         if self._frames is None:
             vr = VideoReader(self.src)
-            sampled_idxs = np.linspace(0, len(vr) - 1, self.n_frames, dtype=int).tolist()
+            face_info = self.face_info[self.src.split('/')[-1][:3]]
+            len_vr = min(len(face_info), len(vr))
+            sampled_idxs = np.linspace(0, len_vr - 1, self.n_frames, dtype=int).tolist()
             self._frames = list(vr.get_batch(sampled_idxs).asnumpy())
+            self._boxes = np.array([face_info[i] for i in sampled_idxs])
+            self._boxes[:, 2:] -= self._boxes[:, :2]
+            self._boxes[:, :2] += self._boxes[:, 2:] / 2
         return self._frames
     
     @property
     def boxes(self):
         if self._boxes is None:
-            self._boxes = self.detector(self.frames)
+            self.frames
+            # boxes = self.detector(self.frames)
+            # self._boxes = boxes
         return self._boxes
 
     def load_cropped_frames(self, margin=1.3):
@@ -105,7 +74,7 @@ def main():
                         default='cuda' if torch.cuda.is_available() else 'cpu')
     parser.add_argument('--n_frames', type=int, default=16)
     parser.add_argument('--detector', type=str,
-                        default='https://github.com/zyayoung/oss/releases/download/rdd/yolov5n-0.5.pt')
+                        default='https://github.com/zyayoung/oss/releases/download/rdd/yolov5s-face.pt')
     parser.add_argument('--resume', type=str,
                         default='https://github.com/zyayoung/oss/releases/download/rdd/ffpp_x3d.pth')
     parser.add_argument('--demo', default=False, action='store_true')
@@ -140,15 +109,24 @@ def main():
     base_dir = os.path.dirname(args.test_label_txt)
     gt = [label == '1' for label, _ in imdb]
     pred = []
-    for label, path in tqdm(imdb):
+    pbar = tqdm(imdb)
+    for label, path in pbar:
         video = FaceVideo(os.path.join(base_dir, path), detector, n_frames=args.n_frames)
         frames = video.load_cropped_frames()
         frames = frames.flatten(0, 1).to(device, non_blocking=True)
 
         real_prob = model(frames[None])[0].softmax(-1)[0].item()
         pred.append(real_prob)
+        _gt = np.array(gt[:len(pred)])
+        _pred = np.array(pred)
+        acc = accuracy_score(_gt, _pred > 0.5)
+        real_acc = accuracy_score(_gt[_gt], _pred[_gt] > 0.5)
+        fake_acc = accuracy_score(_gt[~_gt], _pred[~_gt] > 0.5)
+        pbar.set_description_str(f"Acc: {acc:.4f}; Real Acc: {real_acc:.4f}; Fake Acc: {fake_acc:.4f}")
 
-    acc = accuracy_score(gt, [p > 0.5 for p in pred])
+    gt = np.array(gt)
+    pred = np.array(pred)
+    acc = accuracy_score(gt, pred > 0.5)
     auc = roc_auc_score(gt, pred)
     print("Acc:", acc)
     print("Auc:", auc)
