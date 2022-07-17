@@ -7,49 +7,9 @@ import torch
 import numpy as np
 from decord import VideoReader
 from omegaconf import OmegaConf
+from face_recog import Detector, load_model
 
 import models
-
-def load_model(url, map_location='cpu'):
-    if url.startswith('https'):
-        checkpoint = torch.hub.load_state_dict_from_url(
-            url, map_location=map_location)
-    else:
-        checkpoint = torch.load(url, map_location=map_location)
-    return checkpoint
-
-
-def make_divisible(x, divisor=32):
-    # Returns x evenly divisible by divisor
-    return math.ceil(x / divisor) * divisor
-
-
-class Detector:
-
-    def __init__(self, weights, device='cpu', img_size=640) -> None:
-        self.device = device
-        self.img_size = img_size
-        self.model = load_model(weights, device)['model'].float().fuse().eval()
-
-    def __call__(self, imgs):
-        h0, w0 = imgs[0].shape[:2]
-        r = self.img_size / max(h0, w0)  # resize image to img_size
-        w, h = make_divisible(w0 * r), make_divisible(h0 * r)
-        if r != 1:
-            interp = cv2.INTER_AREA if r < 1 else cv2.INTER_LINEAR
-            imgs = [cv2.resize(img, (w, h), interpolation=interp) for img in imgs]
-        scale = torch.tensor([w0 / w, h0 / h] * 2)
-        img = np.stack(imgs).transpose(0, 3, 1, 2)
-        img = np.ascontiguousarray(img)
-        img = torch.from_numpy(img).to(self.device, non_blocking=True)
-        img = img.float() / 255.
-
-        # Inference
-        pred = self.model(img)[0]
-
-        # Process detections
-        index = pred[..., 4].max(1).indices
-        return pred[range(index.size(0)), index, :4].cpu().mul(scale).numpy()
 
 
 class FaceVideo:
