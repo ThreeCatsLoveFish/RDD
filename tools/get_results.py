@@ -5,7 +5,7 @@ from subprocess import run, PIPE
 
 results = defaultdict(list)
 
-for filename in glob("exps/*/*/*7.log"):
+for filename in glob("exps/*/*/*1.log"):
     result = run(['tail', '-n1', filename], stdout=PIPE).stdout.decode()
     try:
         expname = re.findall(r'exps/(.+?)/.+', filename)[0]

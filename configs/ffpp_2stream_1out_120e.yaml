@@ -13,11 +13,11 @@ num_workers: 4
 train:
   batch_size: 8
   print_info_step_freq: 1
-  max_epoches: 40
+  max_epoches: 120
   use_warmup: False
   warmup_epochs: 1
   dataset:
-    name: FFPP_Dataset_Preprocessed
+    name: FFPP_Dataset_Preprocessed_Multiple
     params:
       root: data/ffpp_videos
       face_info_path: data/ffpp_face_rects_yolov5_s.pkl
@@ -28,9 +28,10 @@ train:
 test:
   batch_size: 8
   dataset:
-    name: FFPP_Dataset_Preprocessed
+    name: FFPP_Dataset_Preprocessed_Multiple
     params:
       root: data/ffpp_videos
+      cross: false
       face_info_path: data/ffpp_face_rects_yolov5_s.pkl
       split: val
       num_segments: 16
@@ -56,5 +57,5 @@ loss:
 
 scheduler:
   name: piecewise
-  decay_epochs: [30]
+  decay_epochs: [90]
   decay_rates: [0.1]

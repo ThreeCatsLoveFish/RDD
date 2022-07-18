@@ -8,7 +8,9 @@ def resize(img, height, width, interpolation=cv2.INTER_LINEAR):
     img_height, img_width = img.shape[:2]
     if height == img_height and width == img_width:
         return img
-    return cv2.resize(img, dsize=(width, height))
+    if img_height >= height and img_width >= width:
+        interpolation = cv2.INTER_AREA
+    return cv2.resize(img, dsize=(width, height), interpolation=interpolation)
 
 
 def augment_hsv(imgs, hgain=5, sgain=30, vgain=30):
@@ -59,11 +61,11 @@ class AugmentHSV:
 
 
 class Resize(T.Resize):
-    def __init__(self, size, interpolation=cv2.INTER_LINEAR):
-        super().__init__(size, interpolation)
+    def __init__(self, size):
+        super().__init__(size)
 
     def forward(self, img):
-        return [resize(i, *self.size, self.interpolation) for i in img]
+        return [resize(i, *self.size) for i in img]
 
 
 class ToTensor:

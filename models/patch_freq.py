@@ -39,7 +39,7 @@ def to_ftcn(m: nn.Module):
 
 
 class PatchFreq(nn.Module):
-    def __init__(self, name='x3d_m', num_class=2, inj_at=2, pretrain=None, relu=False):
+    def __init__(self, name='x3d_m', num_class=2, inj_at=2, pretrain=None):
         super().__init__()
         x3d = torch.hub.load('facebookresearch/pytorchvideo',
             name, pretrained=pretrain is None and is_main_process())
@@ -49,7 +49,7 @@ class PatchFreq(nn.Module):
         self.inj_at = inj_at
         self.freq_stem = nn.Sequential(
             nn.Conv3d(12 * 4**inj_at, 12 * 2**inj_at, 1, bias=False),
-            nn.BatchNorm3d(12 * 2**inj_at), (nn.ReLU(True) if relu else nn.Identity()))
+            nn.BatchNorm3d(12 * 2**inj_at), nn.ReLU(True))
         self.blocks = x3d.blocks[inj_at:]
         self.blocks[0].res_blocks = self.blocks[0].res_blocks[1:]
         if pretrain and is_main_process():

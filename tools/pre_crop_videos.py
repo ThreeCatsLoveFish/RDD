@@ -21,7 +21,7 @@ class VideoWriter:
         if self.p is None:
             h, w, _ = self.shape = frame.shape
             self.p = subprocess.Popen([
-                "ffmpeg",
+                "/usr/bin/ffmpeg",
                 '-y',  # overwrite output file if it exists
                 '-f', 'rawvideo',
                 '-vcodec','rawvideo',
@@ -104,4 +104,6 @@ if __name__ == '__main__':
     rank = int(os.environ.get('RLAUNCH_REPLICA', '0'))
     total = int(os.environ.get('RLAUNCH_REPLICA_TOTAL', '1'))
     pathlist = pathlist[rank::total]
+    pathlist = pathlist[:1]
+    print(pathlist)
     to_pngs(pathlist)

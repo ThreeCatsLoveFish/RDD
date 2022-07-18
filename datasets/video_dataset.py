@@ -316,6 +316,99 @@ class FFPP_Dataset_Preprocessed(FFPP_Dataset):
         return frames, video_label_int, video_path, sampled_idxs
 
 
+class FFPP_Dataset_Det(FFPP_Dataset):
+    all_methods = ['Deepfakes', 'Face2Face', 'FaceSwap', 'NeuralTextures']
+
+    def __init__(self, *args, cross=False, full=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.methods = [self.method]
+        if cross:
+            self.methods = list(set(self.all_methods) - set(self.methods))
+        if full:
+            self.methods = self.all_methods
+        self.fake_video_dirs = [
+            os.path.join(self.root, 'manipulated_sequences', method, self.compression, 'videos') for method in self.methods
+        ]
+
+    def parse_dataset_info(self):
+        """Parse the video dataset information
+        """
+        self.real_video_dir = os.path.join(self.root, 'original_sequences', 'youtube', self.compression, 'videos')
+        self.split_json_path = os.path.join(self.root, 'splits', f'{self.split}.json')
+
+        assert os.path.exists(self.real_video_dir)
+        assert os.path.exists(self.split_json_path)
+
+        with open(self.split_json_path, 'r') as f:
+            json_data = json.load(f)
+
+        self.real_names = []
+        self.fake_names = []
+        for item in json_data:
+            self.real_names.extend([item[0], item[1]])
+            self.fake_names.extend([f'{item[0]}_{item[1]}', f'{item[1]}_{item[0]}'])
+
+        print(f'{self.split} has {len(self.real_names)} real videos and {len(self.fake_names)} fake videos')
+
+        self.dataset_info = [[x, 'real'] for x in self.real_names] + [[x, 'fake'] for x in self.fake_names]
+
+    def get_enclosing_box(self, img_h, img_w, box, margin):
+        """Get the square-shape face bounding box after enlarging by a certain margin.
+
+        Args:
+            img_h (int): Image height.
+            img_w (int): Image width.
+            box (list): [x0, y0, x1, y1] format face bounding box.
+            margin (int): The margin to enlarge.
+
+        """
+        cx, cy, w, h = box
+        max_size = max(w, h)
+
+        x0 = cx - max_size / 2
+        y0 = cy - max_size / 2
+        x1 = cx + max_size / 2
+        y1 = cy + max_size / 2
+
+        offset = max_size * (margin - 1) / 2
+        x0 = int(max(x0 - offset, 0))
+        y0 = int(max(y0 - offset, 0))
+        x1 = int(min(x1 + offset, img_w))
+        y1 = int(min(y1 + offset, img_h))
+
+        return [x0, y0, x1, y1]
+
+    def __getitem__(self, index):
+        video_name, video_label = self.dataset_info[index]
+
+        if video_label == 'fake':
+            method_idx = np.random.randint(len(self.methods))
+            video_path = os.path.join(self.fake_video_dirs[method_idx], video_name + '.mp4')
+        else:
+            video_path = os.path.join(self.real_video_dir, video_name + '.mp4')
+        
+        with open(video_path[:-4] + '.txt') as f:
+            video_face_info_d = [map(float, line.split()) for line in f]
+
+        vr = VideoReader(video_path, num_threads=1)
+        video_len = len(vr)
+
+        if self.split == 'train':
+            sampled_idxs = self.sample_indices_train(video_len)
+        else:
+            sampled_idxs = self.sample_indices_test(video_len)
+
+        frames = self.decode_selected_frames(vr, sampled_idxs, video_face_info_d)
+
+        if self.transform is not None:
+            frames = self.transform(frames)
+        frames = torch.cat(frames)  # TC, H, W
+
+        video_label_int = 0 if video_label == 'real' else 1
+
+        return frames, video_label_int, video_path, sampled_idxs
+
+
 class FFPP_Dataset_Preprocessed_Multiple(FFPP_Dataset):
     def __init__(self,
                  root,

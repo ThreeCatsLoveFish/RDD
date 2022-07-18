@@ -9,7 +9,7 @@ transform_params:
   mean: [0.45, 0.45, 0.45]
   std: [0.225, 0.225, 0.225]
 
-num_workers: 4
+num_workers: 8
 train:
   batch_size: 8
   print_info_step_freq: 1
@@ -17,9 +17,10 @@ train:
   use_warmup: False
   warmup_epochs: 1
   dataset:
-    name: FFPP_Dataset_Preprocessed
+    name: FFPP_Dataset_Det
     params:
       root: data/ffpp_videos
+      cross: true
       face_info_path: data/ffpp_face_rects_yolov5_s.pkl
       split: train
       num_segments: 16
@@ -28,7 +29,7 @@ train:
 test:
   batch_size: 8
   dataset:
-    name: FFPP_Dataset_Preprocessed
+    name: FFPP_Dataset_Det
     params:
       root: data/ffpp_videos
       face_info_path: data/ffpp_face_rects_yolov5_s.pkl
@@ -37,7 +38,7 @@ test:
       sparse_span: 150
 
 model:
-  name: TwoStreamPatchFreq
+  name: X3D
   params:
     num_class: 2
   resume: 

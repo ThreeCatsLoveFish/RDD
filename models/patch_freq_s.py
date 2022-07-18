@@ -49,7 +49,7 @@ class PatchFreqS(nn.Module):
         self.inj_at = inj_at
         self.freq_stem = nn.Sequential(
             nn.Conv3d(3 * 4**inj_at, 6 * 2**inj_at, 1, bias=False),
-            nn.BatchNorm3d(6 * 2**inj_at))
+            nn.BatchNorm3d(6 * 2**inj_at), nn.ReLU(True))
         self.blocks = x3d.blocks[inj_at:]
         if pretrain and is_main_process():
             state_dict = torch.load(pretrain, map_location='cpu')
