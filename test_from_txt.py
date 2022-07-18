@@ -18,16 +18,15 @@ import models
 
 class FaceVideo:
 
-    def __init__(self, src, detector, n_frames=16, img_size=224) -> None:
+    def __init__(self, src, detector, mean, std, n_frames=16, img_size=224) -> None:
         self.src = src
         self.n_frames = n_frames
         if isinstance(img_size, int):
             img_size = (img_size, img_size)
         self.img_size = img_size
         self.detector = detector
-        self.face_info = pickle.load(open('data/ffpp_face_rects_yolov5_s.pkl', 'rb'))
-        self.mean = np.float32([0.45, 0.45, 0.45]) * 255
-        self.std = np.float32([0.225, 0.225, 0.225]) * 255
+        self.mean = np.float32(mean) * 255
+        self.std = np.float32(std) * 255
         self._frames = None
         self._boxes = None
 
@@ -35,21 +34,15 @@ class FaceVideo:
     def frames(self):
         if self._frames is None:
             vr = VideoReader(self.src)
-            face_info = self.face_info[self.src.split('/')[-1][:3]]
-            len_vr = min(len(face_info), len(vr))
-            sampled_idxs = np.linspace(0, len_vr - 1, self.n_frames, dtype=int).tolist()
+            sampled_idxs = np.linspace(0, len(vr) - 1, self.n_frames, dtype=int).tolist()
             self._frames = list(vr.get_batch(sampled_idxs).asnumpy())
-            self._boxes = np.array([face_info[i] for i in sampled_idxs])
-            self._boxes[:, 2:] -= self._boxes[:, :2]
-            self._boxes[:, :2] += self._boxes[:, 2:] / 2
         return self._frames
     
     @property
     def boxes(self):
         if self._boxes is None:
-            self.frames
-            # boxes = self.detector(self.frames)
-            # self._boxes = boxes
+            boxes = self.detector(self.frames)
+            self._boxes = boxes
         return self._boxes
 
     def load_cropped_frames(self, margin=1.3):
@@ -111,7 +104,11 @@ def main():
     pred = []
     pbar = tqdm(imdb)
     for label, path in pbar:
-        video = FaceVideo(os.path.join(base_dir, path), detector, n_frames=args.n_frames)
+        video = FaceVideo(os.path.join(base_dir, path),
+                          detector,
+                          args.transform_params.mean,
+                          args.transform_params.std,
+                          n_frames=args.n_frames)
         frames = video.load_cropped_frames()
         frames = frames.flatten(0, 1).to(device, non_blocking=True)
 
@@ -120,8 +117,8 @@ def main():
         _gt = np.array(gt[:len(pred)])
         _pred = np.array(pred)
         acc = accuracy_score(_gt, _pred > 0.5)
-        real_acc = accuracy_score(_gt[_gt], _pred[_gt] > 0.5)
-        fake_acc = accuracy_score(_gt[~_gt], _pred[~_gt] > 0.5)
+        real_acc = accuracy_score(_gt[_gt], _pred[_gt] > 0.5) if np.any(_gt) else 0
+        fake_acc = accuracy_score(_gt[~_gt], _pred[~_gt] > 0.5) if np.any(~_gt) else 0
         pbar.set_description_str(f"Acc: {acc:.4f}; Real Acc: {real_acc:.4f}; Fake Acc: {fake_acc:.4f}")
 
     gt = np.array(gt)
