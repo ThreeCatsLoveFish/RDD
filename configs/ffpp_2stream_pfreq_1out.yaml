@@ -9,9 +9,9 @@ transform_params:
   mean: [0.45, 0.45, 0.45]
   std: [0.225, 0.225, 0.225]
 
-num_workers: 4
+num_workers: 8
 train:
-  batch_size: 4
+  batch_size: 8
   print_info_step_freq: 1
   max_epoches: 40
   use_warmup: False
@@ -47,7 +47,7 @@ model:
 optimizer:
   name: AdamW
   params:
-    lr: 0.000125
+    lr: 0.001
     weight_decay: 1.0e-4
 
 loss:
