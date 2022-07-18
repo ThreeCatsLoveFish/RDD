@@ -60,7 +60,7 @@ class CrossAttn(nn.Module):
 
 
 class TwoStreamPatchFreq(nn.Module):
-    def __init__(self, name='x3d_s', num_class=2, inj_at=3, attn_at=[3], r=12, pretrain=None):
+    def __init__(self, name='x3d_m', num_class=2, inj_at=3, attn_at=[3], r=12, pretrain=None):
         super().__init__()
         x3d = torch.hub.load('facebookresearch/pytorchvideo',
             name, pretrained=pretrain is None and is_main_process())

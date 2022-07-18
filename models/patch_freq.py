@@ -31,7 +31,7 @@ def patchfy_and_dct(x, p=8, dct=True):
 
 
 class PatchFreq(nn.Module):
-    def __init__(self, name='x3d_s', num_class=2, inj_at=3, pretrain=None):
+    def __init__(self, name='x3d_m', num_class=2, inj_at=3, pretrain=None):
         super().__init__()
         x3d = torch.hub.load('facebookresearch/pytorchvideo',
             name, pretrained=pretrain is None and is_main_process())

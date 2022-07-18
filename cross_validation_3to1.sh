@@ -1,7 +1,7 @@
 set -e
 
-config_name=ffpp_x3d
-model_name=X3D
+config_name=ffpp_2stream_pfreq
+model_name=TwoStreamPatchFreq
 compression=c40
 
 for m1 in Deepfakes Face2Face FaceSwap NeuralTextures; do

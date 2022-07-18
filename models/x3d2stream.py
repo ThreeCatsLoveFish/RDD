@@ -4,7 +4,7 @@ from common.utils.dct import dct_3d
 from common.utils.distribute_utils import is_main_process
 
 class X3D_2Stream(nn.Module):
-    def __init__(self, name='x3d_s', num_class=2):
+    def __init__(self, name='x3d_m', num_class=2):
         super().__init__()
         self.rgb_model = torch.hub.load('facebookresearch/pytorchvideo',
             name, pretrained=is_main_process())
