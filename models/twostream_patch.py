@@ -86,9 +86,9 @@ class TwoStreamPatchFreq(nn.Module):
         self.blocks[0].res_blocks = self.blocks[0].res_blocks[1:]
         self.rgb_blocks = rgb_x3d.blocks
         self.deep_supervision = deep_supervision
-        if deep_supervision:
-            self.aux_output_rgb = nn.Linear(fc_feature_dim, num_class)
-            self.aux_output_dct = nn.Linear(fc_feature_dim, num_class)
+        # if deep_supervision:
+        #     self.aux_output_rgb = nn.Linear(fc_feature_dim, num_class)
+        #     self.aux_output_dct = nn.Linear(fc_feature_dim, num_class)
         # cross_attn = []
         # for i in range(len(self.blocks) - 1):
         #     cross_attn.append(CrossAttn(12 * 2**(i+inj_at), r))
@@ -106,16 +106,19 @@ class TwoStreamPatchFreq(nn.Module):
             # if i >= self.inj_at and i < len(self.rgb_blocks) - 1:
             #     x, f = self.cross_attn[i - self.inj_at](x, f)
         output = torch.cat((x, f), dim=1)
+        if self.training and self.deep_supervision:
+            output = torch.cat([
+                output,
+                torch.cat((x.mul(2), torch.zeros_like(f)), dim=1),
+                torch.cat((torch.zeros_like(x), f.mul(2)), dim=1),
+            ])
         output = output.permute((0, 2, 3, 4, 1))
         output = self.fusion(output)
         output = output.permute((0, 4, 1, 2, 3))
         output = self.output_pool(output)
-        output = output.view(output.shape[0], -1)
-        if self.deep_supervision and self.training:
-            output = torch.stack([
-                output,
-                self.aux_output_rgb(x.mean((2, 3, 4))),
-                self.aux_output_dct(f.mean((2, 3, 4)))])
+        output = output.squeeze()
+        if self.training and self.deep_supervision:
+            output = output.reshape(3, n, -1)
         return output
 
     def set_segment(self, _):
