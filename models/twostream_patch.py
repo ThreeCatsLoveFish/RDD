@@ -59,7 +59,7 @@ class CrossAttn(nn.Module):
 
 
 class TwoStreamPatchFreq(nn.Module):
-    def __init__(self, name='x3d_m', num_class=2, inj_at=3, r=12):
+    def __init__(self, name='x3d_m', num_class=2, inj_at=3, deep_supervision=False):
         super().__init__()
         x3d = torch.hub.load('facebookresearch/pytorchvideo',
             name, pretrained=is_main_process())
@@ -85,6 +85,10 @@ class TwoStreamPatchFreq(nn.Module):
         self.blocks = x3d.blocks[inj_at:]
         self.blocks[0].res_blocks = self.blocks[0].res_blocks[1:]
         self.rgb_blocks = rgb_x3d.blocks
+        self.deep_supervision = deep_supervision
+        if deep_supervision:
+            self.aux_output_rgb = nn.Linear(fc_feature_dim, num_class)
+            self.aux_output_dct = nn.Linear(fc_feature_dim, num_class)
         # cross_attn = []
         # for i in range(len(self.blocks) - 1):
         #     cross_attn.append(CrossAttn(12 * 2**(i+inj_at), r))
@@ -107,6 +111,11 @@ class TwoStreamPatchFreq(nn.Module):
         output = output.permute((0, 4, 1, 2, 3))
         output = self.output_pool(output)
         output = output.view(output.shape[0], -1)
+        if self.deep_supervision and self.training:
+            output = torch.stack([
+                output,
+                self.aux_output_rgb(x.mean((2, 3, 4))),
+                self.aux_output_dct(f.mean((2, 3, 4)))])
         return output
 
     def set_segment(self, _):

@@ -36,6 +36,7 @@ def main():
     # set logger
     logger = get_logger(str(args.local_rank), console=args.local_rank==0, 
         log_path=os.path.join(args.exam_dir, f'train_{args.local_rank}.log'))
+    logger.info(args)
 
     # get dataloaders for train and test
     train_dataloader = get_dataloader(args, 'train')
@@ -109,8 +110,8 @@ def train(dataloader, model, criterion, optimizer: torch.optim.Optimizer, epoch,
     progress = ProgressMeter(epoch_size, [acces, losses, batch_time])
 
     world_size = dist.get_world_size()
-    assert world_size in [1, 2, 4, 8], 'We only support training with 1, 2, 4, 8 gpus.'
-    accumulate = 8 // world_size
+    assert args.reference_world_size % world_size == 0
+    accumulate = args.reference_world_size // world_size
 
     model.train()
     for idx, datas in enumerate(dataloader):
@@ -131,7 +132,12 @@ def train(dataloader, model, criterion, optimizer: torch.optim.Optimizer, epoch,
                 outputs, aux_loss = outputs
                 loss = criterion(outputs, labels) * 0.01 + aux_loss
             else:
-                loss = criterion(outputs, labels)
+                if outputs.ndim == 3:
+                    _labels = labels.repeat(outputs.size(0))
+                    _outputs, outputs = outputs.flatten(0, 1), outputs[0]
+                    loss = criterion(_outputs, _labels)
+                else:
+                    loss = criterion(outputs, labels)
             loss.backward()
             acc, _ = compute_metrics(outputs, labels)
             return loss, acc
