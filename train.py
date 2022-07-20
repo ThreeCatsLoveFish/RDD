@@ -127,8 +127,8 @@ def train(dataloader, model, criterion, optimizer: torch.optim.Optimizer, epoch,
         def closure():
             outputs = model(images)
             if isinstance(outputs, tuple):
-                outputs, aux_loss = outputs
-                loss = criterion(outputs, labels) * 0.01 + aux_loss
+                outputs, aux_output = outputs
+                loss = criterion(outputs, labels) + 0.1 * criterion(aux_output, labels)
             else:
                 loss = criterion(outputs, labels)
             loss.backward()
