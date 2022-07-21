@@ -9,7 +9,7 @@ for filename in glob("exps/*/*/*1.log"):
     result = run(['tail', '-n1', filename], stdout=PIPE).stdout.decode()
     try:
         expname = re.findall(r'exps/(.+?)/.+', filename)[0]
-        acc = float(re.findall(r'best: ([.\d]+)', result)[0])
+        acc = float(re.findall(r'ACC: [.\d]+ \(([.\d]+)\)', result)[0])
     except IndexError:
         continue
     results[expname].append(acc)

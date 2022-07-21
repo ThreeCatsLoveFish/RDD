@@ -16,10 +16,7 @@ from utils import lr_tuner, compute_metrics
 args = get_params()
 setup(args)
 cfg_name = args.config.split('/')[-1].replace('.yaml', '')
-if args.train.dataset.name == 'FFPP_Dataset_Preprocessed_Multiple':
-    args.exam_dir = f"exps/{cfg_name}/{args.model.name}_{args.method}_out_{args.compression}"
-else:
-    args.exam_dir = f"exps/{cfg_name}/{args.model.name}_{args.method}_{args.compression}"
+args.exam_dir = f"{args.method}_{args.compression}"
 init_exam_dir(args)
 
 
@@ -41,6 +38,7 @@ def main():
     # get dataloaders for train and test
     train_dataloader = get_dataloader(args, 'train')
     if 'test' in args:
+        args.test.dataset.params.split = 'test'
         test_dataloader = get_dataloader(args, 'test')
 
     # set model and wrap it with DistributedDataParallel
@@ -168,6 +166,7 @@ def train(dataloader, model, criterion, optimizer: torch.optim.Optimizer, epoch,
 
 
 best_acc = 0
+best_auc = 0
 @torch.no_grad()
 def test(dataloader, model, criterion, optimizer, epoch, global_step, args, logger):
     # modify the STIL num segment (train and test may have different segments)
@@ -202,9 +201,10 @@ def test(dataloader, model, criterion, optimizer, epoch, global_step, args, logg
 
     # log test metrics and save the model into the checkpoint file
     lr = optimizer.param_groups[0]['lr']
-    global best_acc
-    if acc > best_acc:
-        best_acc = acc
+    global best_acc, best_auc
+    if acc > best_acc or auc > best_auc:
+        best_acc = max(best_acc, acc)
+        best_auc = max(best_auc, auc)
         if args.local_rank == 0:
             test_metrics = {
                 'test_acc': acc,
@@ -227,8 +227,8 @@ def test(dataloader, model, criterion, optimizer, epoch, global_step, args, logg
                 f"best.pth")
             torch.save(checkpoint, checkpoint_save_dir)
     logger.info(
-        '[TEST] EPOCH-{} Step-{} ACC: {:.4f}, best: {:.4f} AUC: {:.4f} Loss: {:.5f} lr: {:.6f}'.format(
-            epoch, global_step, acc, best_acc, auc, loss, lr
+        '[TEST] EPOCH-{} Step-{} ACC: {:.4f} ({:.4f}) AUC: {:.4f} ({:.4f}) Loss: {:.5f} lr: {:.6f}'.format(
+            epoch, global_step, acc, best_acc, auc, best_auc, loss, lr
         )
     )
 

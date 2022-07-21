@@ -59,7 +59,7 @@ class CrossAttn(nn.Module):
 
 
 class TwoStreamPatchFreq(nn.Module):
-    def __init__(self, name='x3d_m', num_class=2, inj_at=3, deep_supervision=False):
+    def __init__(self, name='x3d_m', num_class=2, inj_at=3, deep_supervision=False, mlp=True):
         super().__init__()
         x3d = torch.hub.load('facebookresearch/pytorchvideo',
             name, pretrained=is_main_process())
@@ -72,11 +72,14 @@ class TwoStreamPatchFreq(nn.Module):
         rgb_x3d.blocks[5].proj = nn.Identity()
         rgb_x3d.blocks[5].activation = nn.Identity()
         rgb_x3d.blocks[5].output_pool = None
-        self.fusion = nn.Sequential(
-            nn.Linear(fc_feature_dim * 2, fc_feature_dim),
-            nn.ReLU(),
-            nn.Linear(fc_feature_dim, num_class),
-        )
+        if mlp:
+            self.fusion = nn.Sequential(
+                nn.Linear(fc_feature_dim * 2, fc_feature_dim),
+                nn.ReLU(),
+                nn.Linear(fc_feature_dim, num_class),
+            )
+        else:
+            self.fusion = nn.Linear(fc_feature_dim * 2, num_class)
         self.output_pool = nn.AdaptiveAvgPool3d(output_size=1)
         self.inj_at = inj_at
         self.freq_stem = nn.Sequential(
@@ -86,13 +89,6 @@ class TwoStreamPatchFreq(nn.Module):
         self.blocks[0].res_blocks = self.blocks[0].res_blocks[1:]
         self.rgb_blocks = rgb_x3d.blocks
         self.deep_supervision = deep_supervision
-        # if deep_supervision:
-        #     self.aux_output_rgb = nn.Linear(fc_feature_dim, num_class)
-        #     self.aux_output_dct = nn.Linear(fc_feature_dim, num_class)
-        # cross_attn = []
-        # for i in range(len(self.blocks) - 1):
-        #     cross_attn.append(CrossAttn(12 * 2**(i+inj_at), r))
-        # self.cross_attn = nn.ModuleList(cross_attn)
 
     def forward(self, x: torch.Tensor):
         n, _, h, w = x.shape
