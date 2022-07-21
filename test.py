@@ -50,7 +50,7 @@ def main():
     model.load_state_dict(sd)
 
     args.test.dataset.params.split = 'test'
-    test_dataloader = get_dataloader(args, 'test')
+    test_dataloader = get_dataloader(args, 'val')
 
     # main test function
     test(test_dataloader, model, args)
