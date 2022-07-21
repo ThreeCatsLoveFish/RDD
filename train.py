@@ -177,6 +177,8 @@ def test(dataloader, model, criterion, optimizer, epoch, global_step, args, logg
 
         # model forward
         outputs = model(images)
+        if isinstance(outputs, tuple):
+            outputs = outputs[0]
         loss = criterion(outputs, labels)
         loss_t += loss * labels.size(0)
 
