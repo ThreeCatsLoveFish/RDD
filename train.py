@@ -40,7 +40,7 @@ def main():
     # get dataloaders for train and test
     train_dataloader = get_dataloader(args, 'train')
     if 'test' in args:
-        test_dataloader = get_dataloader(args, 'val')
+        test_dataloader = get_dataloader(args, 'test')
 
     # set model and wrap it with DistributedDataParallel
     model = models.__dict__[args.model.name](**args.model.params)

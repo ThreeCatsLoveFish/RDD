@@ -56,6 +56,7 @@ class CrossAttn(nn.Module):
         cor = torch.bmm(k1.flatten(2).transpose(1, 2), k2.flatten(2)) # n thw thw
         attn1 = F.softmax(self.cor_weight1(cor), dim=2)
         attn2 = F.softmax(self.cor_weight2(cor.transpose(1, 2)), dim=2).transpose(1, 2)
+        # TODO: divide by channel number
         r1 = torch.bmm(v1.flatten(2), attn1).reshape((n, c, t, h, w))
         r2 = torch.bmm(v2.flatten(2), attn2.transpose(1, 2)).reshape((n, c, t, h, w))
 
