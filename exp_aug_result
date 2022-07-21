@@ -1,0 +1,200 @@
+Deepfakes
+exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_NONE/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_NONE/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.6714
+Deepfakes
+exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_RS/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_RS/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.7000
+Deepfakes
+exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_RS_CJHSV/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_RS_CJHSV/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.7071
+Deepfakes
+exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_TF_HF/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_TF_HF/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.6929
+Deepfakes
+exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_TF_HF_CJHSV/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_TF_HF_CJHSV/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.6571
+Deepfakes
+exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_TF_HF_RS/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_TF_HF_RS/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.6286
+Deepfakes
+exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_TF_VF_HF/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_TF_VF_HF/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.6679
+Deepfakes
+exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_TF_VF_HF_CJHSV/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_TF_VF_HF_CJHSV/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.6250
+Deepfakes
+exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_TF_VF_HF_CJHSV_RS/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_TF_VF_HF_CJHSV_RS/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.7214
+Deepfakes
+exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_TF_VF_HF_RS/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Deepfakes_c40_TF_VF_HF_RS/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.6750
+Face2Face
+exps/ffpp_x3d_3v1/X3D_Face2Face_c40_NONE/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Face2Face_c40_NONE/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.8893
+Face2Face
+exps/ffpp_x3d_3v1/X3D_Face2Face_c40_RS/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Face2Face_c40_RS/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.8964
+Face2Face
+exps/ffpp_x3d_3v1/X3D_Face2Face_c40_RS_CJHSV/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Face2Face_c40_RS_CJHSV/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.8964
+Face2Face
+exps/ffpp_x3d_3v1/X3D_Face2Face_c40_TF_HF/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Face2Face_c40_TF_HF/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.9000
+Face2Face
+exps/ffpp_x3d_3v1/X3D_Face2Face_c40_TF_HF_CJHSV/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Face2Face_c40_TF_HF_CJHSV/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.9143
+Face2Face
+exps/ffpp_x3d_3v1/X3D_Face2Face_c40_TF_HF_RS/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Face2Face_c40_TF_HF_RS/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.8536
+Face2Face
+exps/ffpp_x3d_3v1/X3D_Face2Face_c40_TF_VF_HF/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Face2Face_c40_TF_VF_HF/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.8750
+Face2Face
+exps/ffpp_x3d_3v1/X3D_Face2Face_c40_TF_VF_HF_CJHSV/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Face2Face_c40_TF_VF_HF_CJHSV/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.8679
+Face2Face
+exps/ffpp_x3d_3v1/X3D_Face2Face_c40_TF_VF_HF_CJHSV_RS/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Face2Face_c40_TF_VF_HF_CJHSV_RS/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.7571
+Face2Face
+exps/ffpp_x3d_3v1/X3D_Face2Face_c40_TF_VF_HF_RS/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_Face2Face_c40_TF_VF_HF_RS/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.8214
+FaceSwap
+exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_NONE/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_NONE/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.6000
+FaceSwap
+exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_RS/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_RS/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.5857
+FaceSwap
+exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_RS_CJHSV/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_RS_CJHSV/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.5857
+FaceSwap
+exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_TF_HF/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_TF_HF/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.5750
+FaceSwap
+exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_TF_HF_CJHSV/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_TF_HF_CJHSV/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.5964
+FaceSwap
+exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_TF_HF_RS/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_TF_HF_RS/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.5571
+FaceSwap
+exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_TF_VF_HF/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_TF_VF_HF/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.5786
+FaceSwap
+exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_TF_VF_HF_CJHSV/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_TF_VF_HF_CJHSV/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.5643
+FaceSwap
+exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_TF_VF_HF_CJHSV_RS/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_TF_VF_HF_CJHSV_RS/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.5571
+FaceSwap
+exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_TF_VF_HF_RS/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_FaceSwap_c40_TF_VF_HF_RS/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.5500
+NeuralTextures
+exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_NONE/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_NONE/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.8536
+NeuralTextures
+exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_RS/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_RS/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.8786
+NeuralTextures
+exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_RS_CJHSV/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_RS_CJHSV/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.8857
+NeuralTextures
+exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_TF_HF/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_TF_HF/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.8679
+NeuralTextures
+exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_TF_HF_CJHSV/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_TF_HF_CJHSV/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.8464
+NeuralTextures
+exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_TF_HF_RS/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_TF_HF_RS/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.8714
+NeuralTextures
+exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_TF_VF_HF/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_TF_VF_HF/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.8643
+NeuralTextures
+exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_TF_VF_HF_CJHSV/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_TF_VF_HF_CJHSV/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.8679
+NeuralTextures
+exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_TF_VF_HF_CJHSV_RS/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_TF_VF_HF_CJHSV_RS/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.8464
+NeuralTextures
+exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_TF_VF_HF_RS/ckpt/best.pth
+ckpt_load_path: exps/ffpp_x3d_3v1/X3D_NeuralTextures_c40_TF_VF_HF_RS/ckpt/best.pth
+test has 140 real videos and 140 fake videos
+ACC: 0.8750

@@ -6,8 +6,11 @@ from common.utils.distribute_utils import is_main_process
 class X3D(nn.Module):
     def __init__(self, name='x3d_s', num_class=2):
         super().__init__()
-        self.base_model = torch.hub.load('facebookresearch/pytorchvideo',
-            name, pretrained=is_main_process())
+        # self.base_model = torch.hub.load('facebookresearch/pytorchvideo',
+        #     name, pretrained=is_main_process())
+        '''Local load'''
+        self.base_model = torch.hub.load('/home/zhangyuang/.cache/torch/hub/facebookresearch_pytorchvideo_main', 
+        name, pretrained=True, source='local')
         fc_feature_dim = self.base_model.blocks[5].proj.in_features
         self.base_model.blocks[5].proj = nn.Linear(fc_feature_dim, num_class)
         self.base_model.blocks[5].activation = nn.Identity()

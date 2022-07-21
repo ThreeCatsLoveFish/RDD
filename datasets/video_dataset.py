@@ -14,7 +14,7 @@ from PIL import Image
 
 import torchvision.transforms as T
 
-import augly.image as imaugs
+
 
 class FFPP_Dataset(data.Dataset):
     def __init__(self,
@@ -312,26 +312,122 @@ class FFPP_Dataset_Preprocessed(FFPP_Dataset):
 
         frames = self.decode_selected_frames(vr, sampled_idxs, None)
 
-        if self.transform is not None:
-            aug_frames = []
-            transform = self.transform
-            # if self.split == 'train':
-                # rand = torch.rand(1)
-                # if rand < 0.25:
-                #     transform.insert(1,imaugs.HFlip(p=1))
-                # elif rand < 0.5:
-                #     transform.insert(1,imaugs.VFlip(p=1))
-                # elif rand < 0.75:
-                #     transform.insert(1,imaugs.VFlip(p=1))
-                #     transform.insert(2,imaugs.HFlip(p=1))   
-            for frame in frames:                
-                aug_frames.append(T.Compose(transform)(Image.fromarray(frame)))
 
-            frames = torch.stack(aug_frames) # T, C, H, W
-            frames = frames.view(-1, frames.size(2), frames.size(3)).contiguous()  # TC, H, W
-            
+        if self.transform is not None:
+            frames = self.transform(frames)
+        frames = torch.cat(frames)  # TC, H, W
+
+        video_label_int = 0 if video_label == 'real' else 1
+
+        return frames, video_label_int, video_path, sampled_idxs
+
+
+
+class FFPP_Dataset_Preprocessed_Multiple(FFPP_Dataset):
+    def __init__(self,
+                 root,
+                 face_info_path,
+                 methods=['Deepfakes', 'Face2Face', 'FaceSwap'],
+                 compression='c23',
+                 split='train',
+                 num_segments=16,
+                 transform=None,
+                 sparse_span=150,
+                 dense_sample=0,
+                 test_margin=1.3):
+        """Dataset class for ffpp dataset.
+        Args:
+            root (str): 
+                The root path for ffpp data.
+            face_info_path (str): 
+                The pickle path containing ffpp face rect info.
+            methods (list of str, optional): 
+                Manipulation method. Multiple of ['Deepfakes', 'Face2Face', 'FaceSwap', 'NeuralTextures']. 
+                Defaults to 'Deepfakes'.
+            compression (str, optional): 
+                Video compression rate. One of ['c23', 'c40']. Defaults to 'c23'.
+            split (str, optional): 
+                Data split. One if ['train', 'val', 'test']. Defaults to 'train'.
+            num_segments (int, optional): 
+                How many frames to choose from each video. Defaults to 16.
+            transform (function, optional): 
+                Data augmentation. Defaults to None.
+            sparse_span (int, optional): 
+                How many frames to sparsely select from the whole video. Defaults to 150.
+            dense_sample (int, optional): 
+                How many frames to densely select. Defaults to 0.
+            test_margin (float, optional): 
+                The margin to enlarge the face bounding box at test stage. Defaults to 1.3.
+        """
+
+        self.root = root
+        self.face_info_path = face_info_path
+        self.methods = methods
+        self.compression = compression
+        self.split = split
+        self.num_segments = num_segments
+        self.transform = transform
+        self.sparse_span = sparse_span
+        self.dense_sample = dense_sample
+        self.test_margin = test_margin
+
+        assert self.compression in ['c23', 'c40']
+        for method in self.methods:
+            assert method in ['Deepfakes', 'Face2Face', 'FaceSwap', 'NeuralTextures']
+        self.parse_dataset_info()
+
+    def parse_dataset_info(self):
+        """Parse the video dataset information
+        """
+        self.real_video_dir = os.path.join(self.root, 'original_sequences', 'youtube', self.compression, 'faces')
+        self.fake_video_dirs = [
+            os.path.join(self.root, 'manipulated_sequences', method, self.compression, 'faces') for method in self.methods
+        ]
+        self.split_json_path = os.path.join(self.root, 'splits', f'{self.split}.json')
+
+        assert os.path.exists(self.real_video_dir)
+        for fake_video_dir in self.fake_video_dirs:
+            assert os.path.exists(fake_video_dir)
+        assert os.path.exists(self.split_json_path)
+
+        with open(self.split_json_path, 'r') as f:
+            json_data = json.load(f)
+
+        self.real_names = []
+        self.fake_names = []
+        for item in json_data:
+            self.real_names.extend([item[0], item[1]])
+            self.fake_names.extend([f'{item[0]}_{item[1]}', f'{item[1]}_{item[0]}'])
+
+        print(f'{self.split} has {len(self.real_names)} real videos and {len(self.fake_names)} fake videos')
+
+        self.dataset_info = [[x, 'real'] for x in self.real_names] + [[x, 'fake'] for x in self.fake_names]
+
+    def decode_selected_frames(self, vr, sampled_idxs, _):
+        return vr.get_batch(sampled_idxs).asnumpy()
+
+
+    def __getitem__(self, index):
+        video_name, video_label = self.dataset_info[index]
+
+        if video_label == 'fake':
+            method_idx = np.random.randint(len(self.methods))
+            video_path = os.path.join(getattr(self, f'{video_label}_video_dirs')[method_idx], video_name + '.mp4')
         else:
-            frames = torch.cat(frames)  # TC, H, W
+            video_path = os.path.join(getattr(self, f'{video_label}_video_dir'), video_name + '.mp4')
+        vr = VideoReader(video_path, num_threads=1)
+        video_len = len(vr)
+
+        if self.split == 'train':
+            sampled_idxs = self.sample_indices_train(video_len)
+        else:
+            sampled_idxs = self.sample_indices_test(video_len)
+
+        frames = self.decode_selected_frames(vr, sampled_idxs, None)
+
+        if self.transform is not None:
+            frames = self.transform(frames)
+        frames = torch.cat(frames)  # TC, H, W
 
         video_label_int = 0 if video_label == 'real' else 1
 

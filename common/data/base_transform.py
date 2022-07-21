@@ -4,51 +4,21 @@ import torchvision.transforms as T
 import cv2
 import augly.image as imaugs
 import PIL
+import random
 
 
-
-
-
-
-# def create_base_transforms(args, split='train'):
-#     """Base data transformation
-
-#     Args:
-#         args: Data transformation args
-#         split (str, optional): Defaults to 'train'.
-
-#     Returns:
-#         [transform]: Data transform
-#     """
-
-#     if split == 'train':
-#         COLOR_JITTER_PARAMS = {
-#             "brightness_factor": 1.2,
-#             "contrast_factor": 1.2,
-#             "saturation_factor": 1.4,
-#         }
-#         base_transform = [
-#             imaugs.Resize(args.image_size, args.image_size, resample=PIL.Image.BILINEAR),    
-#             # imaugs.HFlip(p=0.5),
-#             # imaugs.VFlip(p=0.5),
-#             # imaugs.ColorJitter(**COLOR_JITTER_PARAMS),
-#             T.ToTensor()
-#         ]
-#     else:
-#         base_transform = [
-#             imaugs.Resize(args.image_size, args.image_size, resample=PIL.Image.BILINEAR),
-#             T.ToTensor()
-#         ]
-
-#     return base_transform
-
+COLOR_JITTER_PARAMS = {
+            "brightness": 1.2,
+            "contrast": 1.2,
+            "saturation": 1.1,
+        }
 
 
 def resize(img, height, width, interpolation=cv2.INTER_LINEAR):
     img_height, img_width = img.shape[:2]
     if height == img_height and width == img_width:
         return img
-    return cv2.resize(dsize=(width, height), interpolation=interpolation)
+    return cv2.resize(img, dsize=(width, height), interpolation=interpolation)
 
 
 def augment_hsv(imgs, hgain=5, sgain=30, vgain=30):
@@ -65,6 +35,17 @@ def augment_hsv(imgs, hgain=5, sgain=30, vgain=30):
         cv2.cvtColor(img_hsv.astype(img.dtype), cv2.COLOR_HSV2RGB, dst=img)  # no return needed
 
 
+class RandomVerticalFlip:
+    def __init__(self, p=0.5):
+        super().__init__()
+        self.p = p
+
+    def __call__(self, img):
+        if torch.rand(1) < self.p:
+            return np.array([np.flipud(i) for i in img])
+        return img
+
+
 class RandomHorizontalFlip:
     def __init__(self, p=0.5):
         super().__init__()
@@ -72,7 +53,7 @@ class RandomHorizontalFlip:
 
     def __call__(self, img):
         if torch.rand(1) < self.p:
-            return [i[:, ::-1] for i in img]
+            return np.array([np.fliplr(i) for i in img])
         return img
 
 
@@ -98,12 +79,59 @@ class AugmentHSV:
         return img
 
 
+class ColorJitter:
+    def __init__(self, p=0.5):
+        super().__init__()
+        self.p = p
+        self.applier = T.ColorJitter(**COLOR_JITTER_PARAMS)
+
+    def __call__(self, img):
+        if torch.rand(1) < self.p:
+            return np.array([np.array(self.applier(PIL.Image.fromarray(im))) for im in img])
+        return img
+
+
+class GaussianBlur:
+    def __init__(self, p=0.5):
+        super().__init__()
+        self.p = p
+        self.applier = T.GaussianBlur(kernel_size=(4,4), sigma=(0.1,1))
+
+    def __call__(self, img):
+        if torch.rand(1) < self.p:
+            return np.array([np.array(self.applier(PIL.Image.fromarray(im))) for im in img])
+        return img
+
+
+
+class RandomSwitch:
+    def __init__(self,p=0.5,split=16):
+        super().__init__()
+        self.p = p
+        self.split = split
+
+    def __call__(self,img):
+        if torch.rand(1) < self.p:
+            F, H, W, C = img.shape
+            img = np.transpose(img,axes=[1,2,3,0])
+            img = np.array(np.split(img,self.split,axis=0))
+            img = np.array(np.split(img,self.split,axis=2))
+            img = img.reshape((-1,H//self.split,W//self.split,C,F))
+            np.random.shuffle(img)
+            img = img.reshape((self.split,self.split,H//self.split,W//self.split,C,F))
+            img = np.transpose(img,axes=[0,2,1,3,4,5])
+            img = img.reshape((H,W,C,F))
+            img = np.transpose(img,axes=[3,0,1,2])
+        return img
+
+
+
 class Resize(T.Resize):
     def __init__(self, size, interpolation=cv2.INTER_LINEAR):
         super().__init__(size, interpolation)
 
     def forward(self, img):
-        return [resize(i, *self.size, self.interpolation) for i in img]
+        return np.array([resize(i, *self.size, self.interpolation) for i in img])
 
 
 class ToTensor:
@@ -120,7 +148,7 @@ class ToTensor:
         return [self.to_tensor(i) for i in img]
 
 
-def create_base_transforms(args, split='train'):
+def create_base_transforms(args, split='train', aug=None):
     """Base data transformation
 
     Args:
@@ -130,16 +158,24 @@ def create_base_transforms(args, split='train'):
     Returns:
         [transform]: Data transform
     """
-
+    # print(args.augmentation)
     if split == 'train':
-        base_transform = T.Compose([
-            Resize((args.image_size, args.image_size)),
-            AugmentHSV(),
-            RandomTemporalFlip(),
-            RandomHorizontalFlip(),
-            ToTensor(mean=args.mean, std=args.std)
-        ])
-
+        transform = [Resize((args.image_size, args.image_size))]
+        if not aug is None:
+            if "CJHSV" in aug:
+                transform.append(random.choice([ColorJitter(),AugmentHSV()]))
+            if "VF" in aug:
+                transform.append(RandomVerticalFlip())
+            if "HF" in aug:
+                transform.append(RandomHorizontalFlip())
+            if "TF" in aug:
+                transform.append(RandomTemporalFlip())
+            # if "BlUR" in aug:
+            #     transform.append(GaussianBlur())
+            if "RS" in aug:
+                transform.append(RandomSwitch())
+        transform.append(ToTensor(mean=args.mean, std=args.std))
+        base_transform = T.Compose(transform)
     else:
         base_transform = T.Compose([
             Resize((args.image_size, args.image_size)),

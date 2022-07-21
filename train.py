@@ -16,9 +16,8 @@ from utils import lr_tuner, compute_metrics
 args = get_params()
 setup(args)
 cfg_name = args.config.split('/')[-1].replace('.yaml', '')
-args.exam_dir = f"exps/{cfg_name}/{args.model.name}_{args.method}_{args.compression}"
+args.exam_dir = f"exps/{cfg_name}/{args.model.name}_{args.method}_{args.compression}_"+'_'.join(args.augmentation)
 init_exam_dir(args)
-
 
 ###########################
 # main logic for training #

@@ -49,6 +49,7 @@ def get_params(to_dict=False, **new_kwargs):
     parser.add_argument('--distributed', type=int, default=1)
     parser.add_argument('--local_rank', type=int, default=0)
     parser.add_argument('--world_size', type=int, default=1)
+    parser.add_argument('--augmentation', nargs="+", type=str, default=[])
 
     # parse the above cmd options
     args_tmp = parser.parse_known_args()[0]
