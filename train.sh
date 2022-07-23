@@ -7,7 +7,7 @@ set -x
 COMPRESSION=c40
 
 for cfg in "$@"; do
-    OUTPUT_PATH=$(echo $cfg | sed -e "s/^configs/exps_cj/g" | sed -e "s/.yaml$//g")
+    OUTPUT_PATH=$(echo $cfg | sed -e "s/^configs/exps_randrs/g" | sed -e "s/.yaml$//g")
     mkdir -p $OUTPUT_PATH
     cp $cfg $OUTPUT_PATH
     ln -s /data/projects/RDD/data $OUTPUT_PATH
@@ -15,7 +15,7 @@ for cfg in "$@"; do
 done
 
 for cfg in "$@"; do
-    OUTPUT_PATH=$(echo $cfg | sed -e "s/^configs/exps_cj/g" | sed -e "s/.yaml$//g")
+    OUTPUT_PATH=$(echo $cfg | sed -e "s/^configs/exps_randrs/g" | sed -e "s/.yaml$//g")
     pushd $OUTPUT_PATH
     for METHOD in Deepfakes Face2Face FaceSwap NeuralTextures; do
         python3 -m torch.distributed.launch --nproc_per_node=8 train.py -c $(basename $cfg) --method ${METHOD} --compression ${COMPRESSION}
