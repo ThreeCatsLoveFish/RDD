@@ -180,7 +180,7 @@ def main():
     model.set_segment(args.n_frames)
     model.to(device).eval()
     print("Done")
-    target_layers = [model.base_model.blocks[-3]]
+    target_layers = [model.rgb_blocks[-2], model.blocks[-2]]
 
     os.makedirs('figs/df_det', exist_ok=True)
     os.makedirs('figs/face_det', exist_ok=True)
@@ -207,12 +207,13 @@ def main():
             cam_model(frames[None])[0, 1 if real_prob < 0.5 else 0].backward(retain_graph=True)
 
         # pull the gradients out of the cam_model
-        gradient = cam_model.gradients[0]
-        activation = cam_model.activations[0]
-        activation *= gradient.mean((2, 3, 4), True)
-        heat_map = activation[0].mean(0).relu()
-        heat_map.div_(heat_map.max())
-        for heat_map, frame in zip(heat_map.cpu().numpy(), video.crop()):
+        heat_map_sum = 0
+        for gradient, activation in zip(cam_model.gradients, cam_model.activations):
+            activation *= gradient.mean((2, 3, 4), True)
+            heat_map = activation[0].mean(0).relu()
+            heat_map_sum = heat_map_sum + heat_map
+        heat_map_sum.div_(heat_map_sum.max())
+        for heat_map, frame in zip(heat_map_sum.cpu().numpy(), video.crop()):
             img = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             heatmap1 = cv2.resize(heat_map, (frame.shape[1], frame.shape[0]))
             heatmap1 = np.uint8(255 * (heatmap1))

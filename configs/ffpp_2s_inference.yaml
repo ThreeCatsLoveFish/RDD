@@ -4,9 +4,8 @@ transform_params:
   std: [0.225, 0.225, 0.225]
 
 model:
-  name: X3D
-  resume: https://github.com/zyayoung/oss/releases/download/rdd/ffpp_x3d.pth
+  name: TwoStreamPatchFreq
+  resume: https://github.com/zyayoung/oss/releases/download/rdd/ffpp_2stream.pth
   params:
-    name: x3d_m
     num_class: 2
-    pretrained: False
+    mlp: False

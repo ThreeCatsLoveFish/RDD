@@ -64,8 +64,7 @@ def main():
     parser.add_argument('--n_frames', type=int, default=16)
     parser.add_argument('--detector', type=str,
                         default='https://github.com/zyayoung/oss/releases/download/rdd/yolov5n-0.5.pt')
-    parser.add_argument('--resume', type=str,
-                        default='https://github.com/zyayoung/oss/releases/download/rdd/ffpp_x3d.pth')
+    parser.add_argument('--resume', type=str, default=None)
     parser.add_argument('--demo', default=False, action='store_true')
     args = parser.parse_args()
 
@@ -82,7 +81,7 @@ def main():
     # load forgery detection model
     print("Loading forgery detection model...", end=' ', flush=True)
     model = models.__dict__[args.model.name](**args.model.params)
-    state_dict = load_model(args.resume, map_location='cpu')
+    state_dict = load_model(args.resume or args.model.resume, map_location='cpu')
     if isinstance(state_dict, dict) and 'state_dict' in state_dict:
         state_dict = state_dict['state_dict']
     model.load_state_dict({
