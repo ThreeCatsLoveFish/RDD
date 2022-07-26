@@ -1,0 +1,1 @@
+from real_deepfakes_detect.inference import main
