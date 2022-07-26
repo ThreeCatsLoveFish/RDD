@@ -1,6 +1,9 @@
 import os
 import random
-import wandb
+try:
+    import wandb
+except ImportError:
+    pass
 import shutil
 import time
 import datetime
