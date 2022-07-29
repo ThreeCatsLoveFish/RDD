@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RDD</title>
+</head>
+<body>
+    <h1>Realtime Deepfake Detection</h1>
+    <form action="/upload" enctype='multipart/form-data' method='POST'>
+        <input type="file" name="file" style="margin-top:20px;"/>
+        <br>
+        <input type="submit" value="Upload" class="button-new" style="margin-top:15px;"/>
+    </form>
+
+    <video id="video" autoplay="autoplay" width="50%" muted="muted" controls="controls">
+        <source src="{{video_path}}" type="video/mp4">
+    </video>
+    
+    <form action="/detect" enctype='multipart/form-data' method='POST'>
+        <input type="text" name="video_path" value="{{video_path}}" style="display: none;"/>
+        <br>
+        <input type="submit" value="Start detect!" class="button-new" style="margin-top:15px;"/>
+    </form>
+</body>
+</html>
