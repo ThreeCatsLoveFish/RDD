@@ -21,4 +21,4 @@ def DetectVideo():
 
 
 if __name__ == '__main__':
-    app.run('172.17.0.11', 9000)
+    app.run('localhost', 9000)
