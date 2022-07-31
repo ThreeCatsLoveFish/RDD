@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>RDD</title>
+    <script type="text/javascript" src="/static/js/detect.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.3/css/bulma.min.css" rel="stylesheet">
+    <link href="/static/css/video.css" rel="stylesheet">
+</head>
+
+<body>
+    <section class="hero is-small is-dark mb-4">
+        <div class="hero-body">
+            <h1 class="title is-1">Realtime Deepfake Detection</h1>
+            <p class="subtitle is-4">
+                Feel free to upload your video for Deepfake Detection!
+            </p>
+        </div>
+    </section>
+
+    <div class="columns">
+        <div class="column is-5 is-offset-1">
+            <article class="message">
+                <div class="message-header">
+                    <div class="steptitle">1. Upload a video</div>
+                </div>
+                <div class="message-body">
+                    <form action="/upload" enctype='multipart/form-data' method='POST'>
+                        <div class="file has-name is-danger">
+                            <label class="file-label">
+                                <input class="file-input" type="file" name="file">
+                                <span class="file-cta">
+                                    <span class="file-label">
+                                        Choose a video
+                                    </span>
+                                </span>
+                                <span class="file-name">
+                                    Deepfake_video.mp4
+                                </span>
+                            </label>
+                            <button class="button is-success is-normal" type="submit" value="Upload">
+                                Upload
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </article>
+
+            <video id="video" width="100%" controls="controls">
+                <source src="/static/video/{{.video_id}}.mp4" type="video/mp4">
+            </video>
+
+            <article class="message lower">
+                <div class="message-header">
+                    <div class="steptitle">2. Detect the video to see it's real or fake !</div>
+                </div>
+                <div class="message-body">
+                    <button class="button is-success is-normal" onclick="DetectStart('{{.video_id}}')">
+                        Detect
+                    </button>
+                </div>
+            </article>
+        </div>
+
+        <div id="result" class="column is-5">
+            <article class="message">
+                <div class="message-header">
+                    <div class="steptitle">3. See the result !</div>
+                </div>
+                <div class="message-body">
+                    <h4 id="status" class="title is-4">Status: None</h4>
+                    <progress id="progress" class="progress is-success is-normal" value="0" max="100"></progress>
+                    <h4 id="detect" class="title is-4" style="display: none;">Detect result: </h4>
+                    <h4 id="confidence" class="subtitle is-4" style="display: none;">Confidence: </h4>
+                    <img id="fig" style="display: none;">
+                </div>
+            </article>
+        </div>
+    </div>
+
+</body>
+
+</html>

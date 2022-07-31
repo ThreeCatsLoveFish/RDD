@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>RDD</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.3/css/bulma.min.css" rel="stylesheet">
+    <script type="text/javascript" src="/static/js/detect.js"></script>
+    <link rel="stylesheet" href="/static/css/video.css">
+</head>
+
+<body>
+    <section class="hero is-small is-dark mb-4">
+        <div class="hero-body">
+            <h1 class="title is-1">Realtime Deepfake Detection</h1>
+            <p class="subtitle is-4">
+                Feel free to upload your video for Deepfake Detection!
+            </p>
+        </div>
+    </section>
+
+    <div class="columns">
+        <div class="column is-4 is-offset-1">
+            <article class="message">
+                <div class="message-header">
+                    <div class="steptitle">1. Upload a video</div>
+                </div>
+                <div class="message-body">
+                    <form action="/upload" enctype='multipart/form-data' method='POST'>
+                        <div class="file has-name is-danger">
+                            <label class="file-label">
+                                <input class="file-input" type="file" name="file">
+                                <span class="file-cta">
+                                    <span class="file-label">
+                                        Choose a video
+                                    </span>
+                                </span>
+                                <span class="file-name">
+                                    Deepfake_video.mp4
+                                </span>
+                            </label>
+                            <button class="button is-success is-normal" type="submit" value="Upload">
+                                Upload
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </article>
+        </div>
+    </div>
+
+</body>
+
+</html>

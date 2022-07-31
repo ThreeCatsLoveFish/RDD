@@ -1,0 +1,11 @@
+transform_params:
+  image_size: 224
+  mean: [0.45, 0.45, 0.45]
+  std: [0.225, 0.225, 0.225]
+
+model:
+  name: TwoStreamPatchFreq
+  resume: https://github.com/zyayoung/oss/releases/download/rdd/ffpp_2stream.pth
+  params:
+    num_class: 2
+    mlp: False
