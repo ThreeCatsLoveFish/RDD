@@ -44,12 +44,12 @@ class FaceVideo:
         if self._boxes is None:
             self._boxes = self.detector(self.frames)
             cx, cy = self._boxes[:, 0], self._boxes[:, 1]
-            hw = self._boxes[:, 2:].max(-1) * 1.2 # margin
+            hw = self._boxes[:, 2:].max(-1)
             rois = np.stack([cx - hw / 2, cy - hw / 2, cx +
                             hw / 2, cy + hw / 2], 1).clip(0)
-            # turn to int and update bbox
             self._boxes = rois.astype(int)
         return self._boxes
+
 
 def extract_face_infos(detector, video_paths, output_path):
     res = {}
@@ -66,9 +66,9 @@ def extract_face_infos(detector, video_paths, output_path):
 def main():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('-i', '--input', type=str,
-                        default='./data/*/*.mp4')
+                        default='/youtu-pangu-public/kobeschen/Datasets/deepfakes_detection_datasets/DeepfakeNIR/unzip_files/sub*/*.mp4')
     parser.add_argument('-o', '--output', type=str,
-                        default='../../data/meta_info/face_info.pkl')
+                        default='../../processed/face_info/DeepfakeNIR.pkl')
     parser.add_argument('-d', '--device', type=str,
                         default='cuda' if torch.cuda.is_available() else 'cpu')
     parser.add_argument('--workers', type=int, default=4)
