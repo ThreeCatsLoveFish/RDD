@@ -1,3 +1,4 @@
+import os
 import argparse
 import torch
 import pickle
@@ -18,7 +19,7 @@ except RuntimeError:
 
 class FaceVideo:
 
-    def __init__(self, src, detector, n_frames=16, img_size=224) -> None:
+    def __init__(self, src, detector, n_frames=128, img_size=224) -> None:
         self.src = src
         self.n_frames = n_frames
         if isinstance(img_size, int):
@@ -35,7 +36,7 @@ class FaceVideo:
         if self._frames is None:
             vr = VideoReader(self.src)
             sampled_idxs = np.linspace(
-                0, len(vr) - 1, len(vr), dtype=int).tolist()
+                0, len(vr) - 1, self.n_frames, dtype=int).tolist()
             self._frames = list(vr.get_batch(sampled_idxs).asnumpy())
         return self._frames
 
@@ -66,9 +67,9 @@ def extract_face_infos(detector, video_paths, output_path):
 def main():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('-i', '--input', type=str,
-                        default='/youtu-pangu-public/kobeschen/Datasets/deepfakes_detection_datasets/DeepfakeNIR/unzip_files/sub*/*.mp4')
+                        default='../../data/ffpp_video/manipulated_sequences/FaceSwap/c23/videos/*.mp4')
     parser.add_argument('-o', '--output', type=str,
-                        default='../../processed/face_info/DeepfakeNIR.pkl')
+                        default='../../processed/face_info/ffpp_FaceSwap_c23.pkl')
     parser.add_argument('-d', '--device', type=str,
                         default='cuda' if torch.cuda.is_available() else 'cpu')
     parser.add_argument('--workers', type=int, default=4)
@@ -80,7 +81,6 @@ def main():
         logger.info("Loading face detection model...", end=' ', flush=True)
         detector = Detector('https://github.com/zyayoung/oss/releases/download/rdd/yolov5n-0.5.pt', device)
         detector.model.eval()
-        detector.model.share_memory()
         detectors.append(detector)
 
     # load video
@@ -98,8 +98,10 @@ def main():
     # merge
     res = {}
     for device_id in range(args.workers):
-        res_tmp = pickle.load(open(f'{args.output}'.replace('.pkl', f'_{device_id}.pkl'), 'rb'))
+        tmpfile = f'{args.output}'.replace('.pkl', f'_{device_id}.pkl')
+        res_tmp = pickle.load(open(tmpfile, 'rb'))
         res.update(res_tmp)
+        os.remove(tmpfile)
     
     pickle.dump(res, open(args.output, 'wb'))
 
